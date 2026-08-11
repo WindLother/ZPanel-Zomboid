@@ -1,0 +1,49 @@
+# --- Dependencies / build output --------------------------------------------
+node_modules/
+dist/
+coverage/
+
+# --- Secrets & runtime configuration — NEVER commit --------------------------
+.env
+.env.*
+!.env.example
+*credentials*
+*.pem
+*.key
+
+# --- Databases & runtime data (panel DB, PZ DB, WAL/SHM) ---------------------
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# --- Logs / backups / temp ---------------------------------------------------
+# (no bare `logs/` pattern — backend/src/modules/logs/ is source code)
+*.log
+.zpanel-backups/
+backups/
+backup_*/
+tmp/
+*.bak
+
+# --- Deployment staging (public/ is a copy of the root frontend sources;
+#     the deploy target is /srv/zpanel/public) --------------------------------
+/public/
+
+# --- Legacy pre-backend mock (retired; must not ship) ------------------------
+/mockApi.js
+
+# --- Runtime game/server content (never ZPanel source) -----------------------
+steamapps/
+steamcmd/
+Zomboid/
+Saves/
+Workshop/
+
+# --- Local tooling / OS noise ------------------------------------------------
+.claude/
+.thumbnail
+.DS_Store
+Thumbs.db

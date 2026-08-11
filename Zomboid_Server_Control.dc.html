@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
+html,body{margin:0;padding:0;background:#100f0d;color:#e9e5dd;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font-family:inherit}
+a{color:#d9a44c;text-decoration:none}
+a:hover{color:#eebd6d}
+input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid #d9a44c;outline-offset:2px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2b2822;border-radius:6px}
+::-webkit-scrollbar-track{background:#141210}
+@keyframes pz-pulse{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes pz-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pz-spin{to{transform:rotate(360deg)}}
+</style></helmet>
+<div style="display:grid;grid-template-columns:246px minmax(0,1fr);height:100vh;overflow:hidden;background:#100f0d">
+
+<aside style="background:#141210;border-right:1px solid #26231e;display:flex;flex-direction:column;overflow-y:auto">
+<div style="padding:20px 18px 16px;border-bottom:1px solid #26231e">
+<div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#d9a44c">PROJECT ZOMBOID</div>
+<div style="font:600 14px/1.2 'IBM Plex Sans',sans-serif;color:#e9e5dd;margin-top:6px;letter-spacing:.04em">SERVER CONTROL</div>
+</div>
+<div style="padding:14px 18px;border-bottom:1px solid #26231e;display:flex;flex-direction:column;gap:7px">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="width:7px;height:7px;border-radius:50%;background:{{ srv.dotColor }};box-shadow:0 0 0 3px rgba(255,255,255,.04);animation:{{ srv.dotAnim }}"></span>
+<span style="font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:{{ srv.dotColor }}">{{ srv.statusLabel }}</span>
+</div>
+<div style="font:600 15px/1.2 'IBM Plex Sans',sans-serif;color:#e9e5dd">{{ srv.name }}</div>
+<div style="font:400 11px/1.3 'IBM Plex Mono',monospace;color:#6b655d">{{ srv.ip }}</div>
+</div>
+<nav style="padding:12px 10px;display:flex;flex-direction:column;gap:14px;flex:1">
+<sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:2px">
+<div style="font:600 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#6b655d;padding:6px 8px 8px">{{ g.label }}</div>
+<sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+<button type="button" onClick="{{ it.go }}" aria-current="{{ it.current }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:5px;cursor:pointer;background:{{ it.bg }};color:{{ it.color }};font:500 13px/1.2 'IBM Plex Sans',sans-serif" style-hover="background:#1f1c17;color:#e9e5dd">
+<span style="width:3px;height:14px;border-radius:2px;background:{{ it.mark }}"></span>
+<span style="flex:1">{{ it.label }}</span>
+<span style="font:500 10.5px/1 'IBM Plex Mono',monospace;color:{{ it.badgeColor }}">{{ it.badge }}</span>
+</button>
+</sc-for>
+</div>
+</sc-for>
+</nav>
+<sc-if value="{{ account }}">
+<div style="padding:12px 14px;border-top:1px solid #26231e;display:flex;align-items:center;gap:10px">
+<span style="width:30px;height:30px;border-radius:5px;background:#221e18;border:1px solid #34302a;display:flex;align-items:center;justify-content:center;font:600 12px 'IBM Plex Mono',monospace;color:#d9a44c;flex:none">{{ account.initials }}</span>
+<div style="display:flex;flex-direction:column;min-width:0;flex:1">
+<span style="font:600 12.5px 'IBM Plex Sans',sans-serif;color:#e9e5dd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ account.username }}</span>
+<span style="font:500 10px 'IBM Plex Mono',monospace;color:{{ account.roleColor }}">{{ account.roleLabel }}</span>
+</div>
+<button type="button" onClick="{{ actions.logout }}" title="Sign out" aria-label="Sign out" style="border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;padding:5px 8px;font:500 10.5px 'IBM Plex Mono',monospace" style-hover="background:#241f19;color:#e9e5dd">LOGOUT</button>
+</div>
+</sc-if>
+<div style="padding:12px 18px;border-top:1px solid #26231e;font:400 10px/1.5 'IBM Plex Mono',monospace;color:#57524b">
+<div>BUILD {{ srv.version }}</div>
+<div>AMP · RCON · FILES</div>
+</div>
+</aside>
+
+<div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
+<header style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:18px 28px 16px;border-bottom:1px solid #26231e;background:#141210">
+<div>
+<h1 style="margin:0;font:600 21px/1.1 'IBM Plex Sans',sans-serif;color:#e9e5dd;letter-spacing:-.01em">{{ pageTitle }}</h1>
+<div style="margin-top:6px;font:400 12.5px/1.4 'IBM Plex Sans',sans-serif;color:#918a80">{{ srv.name }} · {{ srv.subtitle }}</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px">
+<span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#6b655d">Updated {{ lastUpdated }}</span>
+<button type="button" onClick="{{ actions.openBroadcast }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19;color:#e9e5dd">Broadcast</button>
+<button type="button" onClick="{{ actions.save }}" disabled="{{ srv.notOnline }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save World</button>
+</div>
+</header>
+
+<main style="flex:1;overflow-y:auto;padding:22px 28px 60px">
+
+<sc-if value="{{ page.dashboard }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:16px;max-width:1420px">
+
+<sc-if value="{{ state.error }}">
+<div style="border:1px solid #4a2a22;background:#1d1512;border-radius:7px;padding:26px;display:flex;flex-direction:column;gap:12px;align-items:flex-start">
+<div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#c4553f">CONNECTION ERROR</div>
+<div style="font:500 15px 'IBM Plex Sans',sans-serif;color:#e9e5dd">Unable to retrieve server status.</div>
+<div style="font:400 12.5px/1.5 'IBM Plex Sans',sans-serif;color:#918a80;max-width:520px">The panel backend did not respond. The server itself may still be running — no action has been taken.</div>
+<button type="button" onClick="{{ actions.retry }}" style="padding:8px 15px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#e9e5dd;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer">Retry</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ state.loading }}">
+<div style="border:1px solid #26231e;background:#161410;border-radius:7px;padding:34px;display:flex;align-items:center;gap:12px">
+<span style="width:14px;height:14px;border:2px solid #34302a;border-top-color:#d9a44c;border-radius:50%;animation:pz-spin .8s linear infinite"></span>
+<span style="font:400 13px 'IBM Plex Sans',sans-serif;color:#918a80">Loading server status…</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ ready }}">
+<div style="display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px">
+
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;display:flex;align-items:center;justify-content:space-between;background:#191713">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">SERVER STATUS</span>
+<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">{{ srv.sourceLabel }}</span>
+</div>
+<div style="padding:18px">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<div>
+<div style="display:flex;align-items:center;gap:9px">
+<span style="width:9px;height:9px;border-radius:50%;background:{{ srv.dotColor }};animation:{{ srv.dotAnim }}"></span>
+<span style="font:600 13px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ srv.dotColor }}">{{ srv.statusLabel }}</span>
+</div>
+<div style="font:600 24px/1.2 'IBM Plex Sans',sans-serif;color:#e9e5dd;margin-top:10px">{{ srv.name }}</div>
+<div style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#918a80;margin-top:3px">{{ srv.subtitle }}</div>
+<sc-if value="{{ srv.transitional }}">
+<div style="margin-top:12px;display:flex;align-items:center;gap:9px;padding:9px 12px;border:1px solid #34302a;border-radius:5px;background:#1b1813">
+<span style="width:12px;height:12px;border:2px solid #34302a;border-top-color:#d9a44c;border-radius:50%;animation:pz-spin .8s linear infinite"></span>
+<span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#cfc9c0">{{ srv.transitionalText }}</span>
+</div>
+</sc-if>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+<sc-if value="{{ srv.isOnline }}" hint-placeholder-val="{{ true }}">
+<button type="button" onClick="{{ actions.save }}" style="padding:9px 14px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#e9e5dd;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Save World</button>
+<button type="button" onClick="{{ actions.openRestart }}" style="padding:9px 14px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Restart</button>
+<button type="button" onClick="{{ actions.openStop }}" style="padding:9px 14px;border:1px solid #573026;border-radius:5px;background:#26160f;color:#e28c74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#331a12">Stop Server</button>
+</sc-if>
+<sc-if value="{{ srv.isOffline }}">
+<button type="button" onClick="{{ actions.start }}" style="padding:9px 16px;border:1px solid #45632f;border-radius:5px;background:#1b2415;color:#a8cf87;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#22301a">Start Server</button>
+</sc-if>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:#26231e;border:1px solid #26231e;border-radius:6px;margin-top:20px;overflow:hidden">
+<sc-for list="{{ metrics }}" as="m" hint-placeholder-count="4">
+<div style="background:#191713;padding:13px 14px 12px;display:flex;flex-direction:column;gap:7px">
+<div style="font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#6b655d">{{ m.label }}</div>
+<div style="font:600 18px/1 'IBM Plex Mono',monospace;color:{{ m.color }}">{{ m.value }}</div>
+<div style="height:3px;border-radius:2px;background:#2b2822;overflow:hidden">
+<div style="height:100%;width:{{ m.pct }};background:{{ m.color }}"></div>
+</div>
+<div style="font:400 10.5px 'IBM Plex Sans',sans-serif;color:#6b655d">{{ m.note }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden;display:flex;flex-direction:column">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;display:flex;align-items:center;justify-content:space-between;background:#191713">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">RESOURCE HISTORY</span>
+<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">LAST 200s</span>
+</div>
+<div style="padding:16px 18px;display:flex;flex-direction:column;gap:16px;flex:1">
+<div>
+<div style="display:flex;justify-content:space-between;font:500 10.5px 'IBM Plex Mono',monospace;color:#918a80;margin-bottom:7px"><span>CPU</span><span style="color:#d9a44c">{{ srv.cpu }}</span></div>
+<div style="display:flex;align-items:flex-end;gap:2px;height:56px">
+<sc-for list="{{ chart.cpu }}" as="b" hint-placeholder-count="40">
+<div style="flex:1;height:{{ b.h }};min-height:2px;background:#8a6a2e;border-radius:1px"></div>
+</sc-for>
+</div>
+</div>
+<div>
+<div style="display:flex;justify-content:space-between;font:500 10.5px 'IBM Plex Mono',monospace;color:#918a80;margin-bottom:7px"><span>MEMORY</span><span style="color:#79a35f">{{ srv.memText }}</span></div>
+<div style="display:flex;align-items:flex-end;gap:2px;height:56px">
+<sc-for list="{{ chart.mem }}" as="b" hint-placeholder-count="40">
+<div style="flex:1;height:{{ b.h }};min-height:2px;background:#4d6a3a;border-radius:1px"></div>
+</sc-for>
+</div>
+</div>
+</div>
+</section>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px">
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;display:flex;align-items:center;justify-content:space-between;background:#191713">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">ONLINE PLAYERS</span>
+<span style="font:500 11px 'IBM Plex Mono',monospace;color:#cfc9c0">{{ srv.playerCount }}</span>
+</div>
+<sc-if value="{{ onlineEmpty }}">
+<div style="padding:30px 18px;text-align:center;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6b655d">{{ onlineEmptyText }}</div>
+</sc-if>
+<sc-for list="{{ onlinePlayers }}" as="p" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid #201d18">
+<button type="button" onClick="{{ p.open }}" style="text-align:left;background:none;border:0;padding:0;cursor:pointer;display:flex;align-items:center;gap:10px">
+<span style="width:26px;height:26px;border-radius:4px;background:#252118;border:1px solid #34302a;display:flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Mono',monospace;color:#d9a44c">{{ p.initials }}</span>
+<span style="display:flex;flex-direction:column;gap:2px">
+<span style="font:500 13.5px 'IBM Plex Sans',sans-serif;color:#e9e5dd">{{ p.username }}</span>
+<span style="font:400 11px 'IBM Plex Mono',monospace;color:#6b655d">{{ p.accessLevel }} · {{ p.ping }}</span>
+</span>
+</button>
+<span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#918a80">Online {{ p.session }}</span>
+<button type="button" onClick="{{ p.menu }}" aria-label="Player actions" style="width:28px;height:26px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 12px 'IBM Plex Sans',sans-serif" style-hover="background:#241f19;color:#e9e5dd">•••</button>
+</div>
+</sc-for>
+<div style="padding:13px 18px">
+<button type="button" onClick="{{ actions.goPlayers }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19;color:#e9e5dd">View All Players</button>
+</div>
+</section>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">BROADCAST MESSAGE</div>
+<div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+<label for="pz-bc" style="font:500 11.5px 'IBM Plex Sans',sans-serif;color:#918a80">Message</label>
+<textarea id="pz-bc" rows="2" value="{{ form.broadcast }}" onChange="{{ form.onBroadcast }}" placeholder="Server will restart in 10 minutes." style="width:100%;resize:vertical;padding:9px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px/1.5 'IBM Plex Sans',sans-serif"></textarea>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">SENT TO ALL PLAYERS IN-GAME</span>
+<button type="button" onClick="{{ actions.sendBroadcast }}" style="padding:8px 14px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Send Message</button>
+</div>
+</div>
+</section>
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden;flex:1">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;display:flex;align-items:center;justify-content:space-between">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">RECENT ACTIVITY</span>
+<button type="button" onClick="{{ actions.goActivity }}" style="border:0;background:none;color:#d9a44c;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer;padding:0">All</button>
+</div>
+<div style="padding:6px 18px 14px">
+<sc-for list="{{ activityPreview }}" as="a" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;padding:10px 0;border-bottom:1px solid #201d18">
+<span style="font:400 11px 'IBM Plex Mono',monospace;color:#57524b">{{ a.at }}</span>
+<span style="font:400 12.5px/1.45 'IBM Plex Sans',sans-serif;color:#cfc9c0"><strong style="font-weight:600;color:#e9e5dd">{{ a.actor }}</strong> {{ a.text }}</span>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.players }}">
+<div style="display:flex;flex-direction:column;gap:14px;max-width:1420px">
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<input type="search" value="{{ form.playerSearch }}" onChange="{{ form.onPlayerSearch }}" placeholder="Search players or Steam IDs…" aria-label="Search players" style="flex:1;min-width:220px;padding:9px 12px;border:1px solid #34302a;border-radius:5px;background:#161410;color:#e9e5dd;font:400 13px 'IBM Plex Sans',sans-serif">
+<div style="display:flex;border:1px solid #34302a;border-radius:5px;overflow:hidden">
+<sc-for list="{{ playerFilters }}" as="f" hint-placeholder-count="3">
+<button type="button" onClick="{{ f.go }}" style="padding:9px 14px;border:0;border-right:1px solid #34302a;cursor:pointer;background:{{ f.bg }};color:{{ f.color }};font:500 12px 'IBM Plex Sans',sans-serif">{{ f.label }}</button>
+</sc-for>
+</div>
+</div>
+
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="overflow-x:auto"><div style="min-width:790px">
+<div style="display:grid;grid-template-columns:minmax(160px,1.2fr) 110px 130px minmax(160px,1fr) 90px 44px;gap:12px;padding:11px 18px;background:#191713;border-bottom:1px solid #26231e;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#6b655d">
+<span>PLAYER</span><span>STATUS</span><span>ACCESS</span><span>STEAM ID</span><span>PLAYTIME</span><span></span>
+</div>
+<sc-if value="{{ state.loading }}">
+<div style="padding:28px 18px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6b655d">Loading players…</div>
+</sc-if>
+<sc-if value="{{ playersEmpty }}">
+<div style="padding:34px 18px;text-align:center;display:flex;flex-direction:column;gap:6px">
+<span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#cfc9c0">No players match this filter.</span>
+<span style="font:400 12px 'IBM Plex Sans',sans-serif;color:#6b655d">Try clearing the search or switching to All.</span>
+</div>
+</sc-if>
+<sc-for list="{{ playerRows }}" as="p" hint-placeholder-count="5">
+<div style="display:grid;grid-template-columns:minmax(160px,1.2fr) 110px 130px minmax(160px,1fr) 90px 44px;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid #201d18">
+<button type="button" onClick="{{ p.open }}" style="text-align:left;border:0;background:none;padding:0;cursor:pointer;font:500 13.5px 'IBM Plex Sans',sans-serif;color:#e9e5dd" style-hover="color:#d9a44c">{{ p.username }}</button>
+<span style="display:flex;align-items:center;gap:7px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ p.statusColor }}"><span style="width:6px;height:6px;border-radius:50%;background:{{ p.statusColor }}"></span>{{ p.statusText }}</span>
+<span style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;padding:3px 8px;border:1px solid {{ p.accessBorder }};border-radius:3px;color:{{ p.accessColor }};justify-self:start">{{ p.accessLevel }}</span>
+<span style="font:400 12px 'IBM Plex Mono',monospace;color:#918a80;overflow:hidden;text-overflow:ellipsis">{{ p.steamId }}</span>
+<span style="font:400 12px 'IBM Plex Mono',monospace;color:#6b655d">{{ p.playtime }}</span>
+<button type="button" onClick="{{ p.menu }}" aria-label="Player actions" style="width:28px;height:26px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 12px 'IBM Plex Sans',sans-serif" style-hover="background:#241f19;color:#e9e5dd">•••</button>
+</div>
+</sc-for>
+</div></div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.whitelist }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;max-width:1100px">
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;display:flex;align-items:center;justify-content:space-between">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">WHITELISTED USERS</span>
+<button type="button" onClick="{{ actions.openAddWhitelistUser }}" style="padding:6px 11px;border:1px solid #34302a;border-radius:4px;background:#1c1a16;color:#e9e5dd;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Add User</button>
+</div>
+<sc-if value="{{ whitelistUsersEmpty }}">
+<div style="padding:26px 18px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6b655d">No users are whitelisted yet.</div>
+</sc-if>
+<sc-for list="{{ whitelistUsers }}" as="u" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;border-bottom:1px solid #201d18">
+<span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#e9e5dd">{{ u.name }}</span>
+<button type="button" onClick="{{ u.remove }}" style="padding:5px 10px;border:1px solid #3a2620;border-radius:4px;background:#1d1512;color:#d1836e;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#26160f">Remove</button>
+</div>
+</sc-for>
+</section>
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;display:flex;align-items:center;justify-content:space-between">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">STEAM IDS</span>
+<button type="button" onClick="{{ actions.openAddSteam }}" style="padding:6px 11px;border:1px solid #34302a;border-radius:4px;background:#1c1a16;color:#e9e5dd;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Add Steam ID</button>
+</div>
+<sc-if value="{{ whitelistIdsEmpty }}">
+<div style="padding:26px 18px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6b655d">No Steam IDs registered.</div>
+</sc-if>
+<sc-for list="{{ whitelistIds }}" as="u" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;border-bottom:1px solid #201d18">
+<span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#cfc9c0">{{ u.name }}</span>
+<button type="button" onClick="{{ u.remove }}" style="padding:5px 10px;border:1px solid #3a2620;border-radius:4px;background:#1d1512;color:#d1836e;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#26160f">Remove</button>
+</div>
+</sc-for>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.settings }}">
+<div style="display:flex;flex-direction:column;gap:14px;max-width:1000px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border:1px solid #26231e;border-radius:7px;background:#161410;position:sticky;top:-22px;z-index:5">
+<span style="display:flex;align-items:center;gap:8px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:{{ settingsDirty.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ settingsDirty.color }}"></span>{{ settingsDirty.text }}</span>
+<div style="display:flex;gap:8px">
+<button type="button" onClick="{{ actions.discardSettings }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Discard Changes</button>
+<button type="button" onClick="{{ actions.saveSettings }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save Changes</button>
+</div>
+</div>
+<sc-for list="{{ settingsSections }}" as="sec" hint-placeholder-count="3">
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">{{ sec.title }}</div>
+<div style="padding:4px 18px 10px">
+<sc-for list="{{ sec.fields }}" as="f" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:minmax(200px,1fr) minmax(200px,300px);gap:22px;align-items:center;padding:14px 0;border-bottom:1px solid #201d18">
+<div style="display:flex;flex-direction:column;gap:4px">
+<label for="{{ f.id }}" style="font:500 13.5px 'IBM Plex Sans',sans-serif;color:#e9e5dd;display:flex;align-items:center;gap:7px">{{ f.label }}<span style="font:500 10px 'IBM Plex Mono',monospace;color:#d9a44c">{{ f.dirtyMark }}</span></label>
+<span style="font:400 12px/1.45 'IBM Plex Sans',sans-serif;color:#8a837a">{{ f.desc }}</span>
+<sc-if value="{{ f.restart }}">
+<span style="font:500 11px 'IBM Plex Mono',monospace;color:#d3922f;display:flex;align-items:center;gap:6px">⚠ REQUIRES SERVER RESTART</span>
+</sc-if>
+</div>
+<div style="display:flex;justify-content:flex-end">
+<sc-if value="{{ f.isToggle }}">
+<button type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-pressed="{{ f.value }}" style="display:flex;align-items:center;gap:9px;padding:6px 11px 6px 8px;border:1px solid {{ f.toggleBorder }};border-radius:5px;background:{{ f.toggleBg }};color:{{ f.toggleColor }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer;min-width:118px">
+<span style="width:26px;height:14px;border-radius:8px;background:{{ f.trackBg }};display:inline-flex;align-items:center;padding:2px;justify-content:{{ f.knobPos }}"><span style="width:10px;height:10px;border-radius:50%;background:{{ f.knobBg }}"></span></span>{{ f.toggleLabel }}</button>
+</sc-if>
+<sc-if value="{{ f.isSelect }}">
+<select id="{{ f.id }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:100%;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif;appearance:none;cursor:pointer">
+<sc-for list="{{ f.options }}" as="o" hint-placeholder-count="3"><option value="{{ o }}">{{ o }}</option></sc-for>
+</select>
+</sc-if>
+<sc-if value="{{ f.isNumber }}">
+<input id="{{ f.id }}" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}" step="{{ f.step }}" style="width:130px;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Mono',monospace;text-align:right">
+</sc-if>
+<sc-if value="{{ f.isText }}">
+<input id="{{ f.id }}" type="text" value="{{ f.value }}" onChange="{{ f.onChange }}" placeholder="{{ f.placeholder }}" style="width:100%;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif">
+</sc-if>
+<sc-if value="{{ f.isTextarea }}">
+<textarea id="{{ f.id }}" rows="3" value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:100%;resize:vertical;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px/1.5 'IBM Plex Sans',sans-serif"></textarea>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.sandbox }}">
+<div style="display:grid;grid-template-columns:190px minmax(0,1fr);gap:18px;max-width:1200px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:10px;position:sticky;top:-22px">
+<input type="search" value="{{ form.sandboxSearch }}" onChange="{{ form.onSandboxSearch }}" placeholder="Search settings…" aria-label="Search sandbox settings" style="width:100%;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#161410;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif">
+<div style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden;display:flex;flex-direction:column">
+<sc-for list="{{ sandboxCats }}" as="c" hint-placeholder-count="10">
+<button type="button" onClick="{{ c.go }}" style="text-align:left;padding:9px 13px;border:0;border-bottom:1px solid #201d18;cursor:pointer;background:{{ c.bg }};color:{{ c.color }};font:500 12.5px 'IBM Plex Sans',sans-serif;display:flex;justify-content:space-between;gap:8px" style-hover="background:#1f1c17">{{ c.name }}<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">{{ c.count }}</span></button>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #26231e;border-radius:7px;background:#161410">
+<span style="display:flex;align-items:center;gap:8px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ sandboxDirty.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ sandboxDirty.color }}"></span>{{ sandboxDirty.text }}</span>
+<button type="button" onClick="{{ actions.saveSandbox }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save Changes</button>
+<button type="button" onClick="{{ actions.discardSandbox }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Discard</button>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+<sc-if value="{{ sandboxEmpty }}">
+<div style="border:1px solid #26231e;background:#161410;border-radius:7px;padding:34px;text-align:center;display:flex;flex-direction:column;gap:6px">
+<span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#cfc9c0">No sandbox settings match “{{ form.sandboxSearch }}”.</span>
+<span style="font:400 12px 'IBM Plex Sans',sans-serif;color:#6b655d">Try a broader term such as “zombie”, “loot” or “fuel”.</span>
+</div>
+</sc-if>
+<sc-for list="{{ sandboxSections }}" as="sec" hint-placeholder-count="2">
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;display:flex;justify-content:space-between;gap:10px">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">{{ sec.title }}</span>
+<span style="font:400 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#57524b">{{ sec.cat }}</span>
+</div>
+<div style="padding:4px 18px 10px">
+<sc-for list="{{ sec.fields }}" as="f" hint-placeholder-count="5">
+<div style="display:grid;grid-template-columns:minmax(200px,1fr) minmax(190px,270px);gap:22px;align-items:center;padding:13px 0;border-bottom:1px solid #201d18">
+<div style="display:flex;flex-direction:column;gap:4px">
+<label for="{{ f.id }}" style="font:500 13.5px 'IBM Plex Sans',sans-serif;color:#e9e5dd;display:flex;align-items:center;gap:7px">{{ f.label }}<span style="font:500 10px 'IBM Plex Mono',monospace;color:#d9a44c">{{ f.dirtyMark }}</span></label>
+<span style="font:400 12px/1.45 'IBM Plex Sans',sans-serif;color:#8a837a">{{ f.desc }}</span>
+</div>
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:9px">
+<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">{{ f.unit }}</span>
+<sc-if value="{{ f.isToggle }}">
+<button type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-pressed="{{ f.value }}" style="display:flex;align-items:center;gap:9px;padding:6px 11px 6px 8px;border:1px solid {{ f.toggleBorder }};border-radius:5px;background:{{ f.toggleBg }};color:{{ f.toggleColor }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer;min-width:118px">
+<span style="width:26px;height:14px;border-radius:8px;background:{{ f.trackBg }};display:inline-flex;align-items:center;padding:2px;justify-content:{{ f.knobPos }}"><span style="width:10px;height:10px;border-radius:50%;background:{{ f.knobBg }}"></span></span>{{ f.toggleLabel }}</button>
+</sc-if>
+<sc-if value="{{ f.isSelect }}">
+<select id="{{ f.id }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="flex:1;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif;appearance:none;cursor:pointer">
+<sc-for list="{{ f.options }}" as="o" hint-placeholder-count="4"><option value="{{ o }}">{{ o }}</option></sc-for>
+</select>
+</sc-if>
+<sc-if value="{{ f.isNumber }}">
+<input id="{{ f.id }}" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}" step="{{ f.step }}" style="width:120px;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Mono',monospace;text-align:right">
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.mods }}">
+<div style="display:flex;flex-direction:column;gap:14px;max-width:1200px">
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<input type="search" value="{{ form.modSearch }}" onChange="{{ form.onModSearch }}" placeholder="Search mods…" aria-label="Search mods" style="flex:1;min-width:220px;padding:9px 12px;border:1px solid #34302a;border-radius:5px;background:#161410;color:#e9e5dd;font:400 13px 'IBM Plex Sans',sans-serif">
+<span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#918a80">{{ modSummary }}</span>
+<button type="button" onClick="{{ actions.checkMods }}" style="padding:9px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Check For Updates</button>
+<button type="button" onClick="{{ actions.updateMods }}" style="padding:9px 13px;border:1px solid #45632f;border-radius:5px;background:#1b2415;color:#a8cf87;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#22301a">Update Mods</button>
+<button type="button" onClick="{{ actions.openAddMod }}" style="padding:9px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Add Mod</button>
+</div>
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="overflow-x:auto"><div style="min-width:860px">
+<div style="display:grid;grid-template-columns:52px minmax(180px,1.4fr) 130px minmax(120px,1fr) 150px 70px 44px;gap:12px;padding:11px 18px;background:#191713;border-bottom:1px solid #26231e;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#6b655d">
+<span>ORDER</span><span>NAME</span><span>WORKSHOP ID</span><span>MOD IDS</span><span>STATUS</span><span>ENABLED</span><span></span>
+</div>
+<sc-if value="{{ modsEmpty }}">
+<div style="padding:32px 18px;text-align:center;display:flex;flex-direction:column;gap:6px">
+<span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#cfc9c0">No mods match this search.</span>
+<span style="font:400 12px 'IBM Plex Sans',sans-serif;color:#6b655d">Workshop metadata (name, author, thumbnail) appears here once the backend is connected.</span>
+</div>
+</sc-if>
+<sc-for list="{{ modRows }}" as="m" hint-placeholder-count="7">
+<div style="display:grid;grid-template-columns:52px minmax(180px,1.4fr) 130px minmax(120px,1fr) 150px 70px 44px;gap:12px;align-items:center;padding:11px 18px;border-bottom:1px solid #201d18">
+<div style="display:flex;align-items:center;gap:4px">
+<span style="font:500 11.5px 'IBM Plex Mono',monospace;color:#918a80">{{ m.loadOrder }}</span>
+<div style="display:flex;flex-direction:column;gap:1px">
+<button type="button" onClick="{{ m.up }}" aria-label="Move up" style="width:16px;height:11px;border:1px solid #2b2822;border-radius:2px;background:#1b1813;color:#918a80;font:600 7px 'IBM Plex Sans',sans-serif;cursor:pointer;padding:0;line-height:1">▲</button>
+<button type="button" onClick="{{ m.down }}" aria-label="Move down" style="width:16px;height:11px;border:1px solid #2b2822;border-radius:2px;background:#1b1813;color:#918a80;font:600 7px 'IBM Plex Sans',sans-serif;cursor:pointer;padding:0;line-height:1">▼</button>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;min-width:0">
+<span style="width:26px;height:26px;border-radius:4px;background:#12110e;border:1px dashed #34302a;flex:none"></span>
+<span style="font:500 13.5px 'IBM Plex Sans',sans-serif;color:{{ m.nameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.displayName }}</span>
+</div>
+<span style="font:400 12px 'IBM Plex Mono',monospace;color:#918a80">{{ m.workshopIdText }}</span>
+<span style="font:400 12px 'IBM Plex Mono',monospace;color:#6b655d;overflow:hidden;text-overflow:ellipsis">{{ m.modIdsText }}</span>
+<span style="display:flex;align-items:center;gap:7px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ m.statusColor }}"><span style="font:600 11px 'IBM Plex Mono',monospace">{{ m.statusIcon }}</span>{{ m.statusText }}</span>
+<button type="button" onClick="{{ m.toggle }}" aria-pressed="{{ m.enabled }}" style="justify-self:start;padding:4px 9px;border:1px solid {{ m.enabledBorder }};border-radius:4px;background:{{ m.enabledBg }};color:{{ m.enabledColor }};font:500 11px 'IBM Plex Mono',monospace;cursor:pointer">{{ m.enabledLabel }}</button>
+<button type="button" onClick="{{ m.remove }}" aria-label="Remove mod" style="width:28px;height:26px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 12px 'IBM Plex Sans',sans-serif" style-hover="background:#26160f;color:#d1836e">✕</button>
+</div>
+</sc-for>
+</div></div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.logs }}">
+<div style="display:flex;flex-direction:column;gap:12px;max-width:1300px;height:100%">
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<div style="display:flex;border:1px solid #34302a;border-radius:5px;overflow:hidden">
+<sc-for list="{{ logFilters }}" as="f" hint-placeholder-count="4">
+<button type="button" onClick="{{ f.go }}" style="padding:8px 14px;border:0;border-right:1px solid #34302a;cursor:pointer;background:{{ f.bg }};color:{{ f.color }};font:500 12px 'IBM Plex Sans',sans-serif">{{ f.label }}</button>
+</sc-for>
+</div>
+<input type="search" value="{{ form.logSearch }}" onChange="{{ form.onLogSearch }}" placeholder="Search logs…" aria-label="Search logs" style="flex:1;min-width:180px;padding:8px 12px;border:1px solid #34302a;border-radius:5px;background:#161410;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif">
+<button type="button" onClick="{{ actions.togglePause }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:{{ logCtl.pauseBg }};color:{{ logCtl.pauseColor }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer">{{ logCtl.pauseLabel }}</button>
+<button type="button" onClick="{{ actions.toggleAutoscroll }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:{{ logCtl.scrollBg }};color:{{ logCtl.scrollColor }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer">{{ logCtl.scrollLabel }}</button>
+<button type="button" onClick="{{ actions.clearLogs }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer">Clear View</button>
+</div>
+<section style="border:1px solid #26231e;background:#12110e;border-radius:7px;overflow:hidden;display:flex;flex-direction:column;min-height:420px">
+<div style="padding:10px 16px;background:#191713;border-bottom:1px solid #26231e;display:flex;justify-content:space-between">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">SERVER LOGS</span>
+<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">{{ logCount }}</span>
+</div>
+<div ref="{{ refs.logs }}" style="flex:1;overflow-y:auto;padding:8px 0;max-height:58vh">
+<sc-if value="{{ logsEmpty }}">
+<div style="padding:30px 16px;text-align:center;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6b655d">No log lines match the current filter.</div>
+</sc-if>
+<sc-for list="{{ logRows }}" as="l" hint-placeholder-count="9">
+<div style="display:grid;grid-template-columns:78px 82px minmax(0,1fr) 60px;gap:10px;padding:4px 16px;align-items:baseline;font:400 12px/1.6 'IBM Plex Mono',monospace" style-hover="background:#181511">
+<span style="color:#57524b">{{ l.time }}</span>
+<span style="color:{{ l.color }};font-weight:500">{{ l.level }}</span>
+<span style="color:#cfc9c0;word-break:break-word">{{ l.text }}</span>
+<button type="button" onClick="{{ l.copy }}" style="border:0;background:none;color:#57524b;font:500 10.5px 'IBM Plex Mono',monospace;cursor:pointer;text-align:right;padding:0" style-hover="color:#d9a44c">COPY</button>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.console }}">
+<div style="display:flex;flex-direction:column;gap:12px;max-width:1100px">
+<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid #26231e;border-radius:7px;background:#161410">
+<span style="font:400 11.5px/1.5 'IBM Plex Sans',sans-serif;color:#918a80">This is the Project Zomboid server console — game commands only, no shell access.</span>
+</div>
+<section style="border:1px solid #26231e;background:#12110e;border-radius:7px;overflow:hidden;display:flex;flex-direction:column">
+<div style="padding:10px 16px;background:#191713;border-bottom:1px solid #26231e;display:flex;justify-content:space-between">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">SERVER CONSOLE</span>
+<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:{{ srv.dotColor }}">{{ srv.statusLabel }}</span>
+</div>
+<div ref="{{ refs.console }}" style="height:46vh;min-height:320px;overflow-y:auto;padding:12px 0">
+<sc-for list="{{ consoleRows }}" as="c" hint-placeholder-count="5">
+<div style="display:grid;grid-template-columns:78px 14px minmax(0,1fr);gap:8px;padding:2px 16px;font:400 12.5px/1.7 'IBM Plex Mono',monospace">
+<span style="color:#57524b">{{ c.time }}</span>
+<span style="color:{{ c.markColor }}">{{ c.mark }}</span>
+<span style="color:{{ c.color }};word-break:break-word">{{ c.text }}</span>
+</div>
+</sc-for>
+</div>
+<div style="border-top:1px solid #26231e;padding:10px 16px;display:flex;align-items:center;gap:10px;background:#161410">
+<span style="font:600 13px 'IBM Plex Mono',monospace;color:#d9a44c">&gt;</span>
+<input value="{{ form.consoleInput }}" onChange="{{ form.onConsoleInput }}" onKeyDown="{{ form.onConsoleKey }}" placeholder="Enter server command…" aria-label="Server command" style="flex:1;padding:8px 10px;border:1px solid #2b2822;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Mono',monospace">
+<button type="button" onClick="{{ actions.sendCommand }}" style="padding:8px 14px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer">Send</button>
+</div>
+<div style="padding:9px 16px;border-top:1px solid #201d18;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#161410">
+<span style="font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#57524b">HISTORY</span>
+<sc-if value="{{ historyEmpty }}"><span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#57524b">No commands sent this session — press ↑ to recall.</span></sc-if>
+<sc-for list="{{ historyRows }}" as="h" hint-placeholder-count="3">
+<button type="button" onClick="{{ h.use }}" style="padding:4px 9px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#cfc9c0;font:400 11.5px 'IBM Plex Mono',monospace;cursor:pointer" style-hover="background:#241f19">{{ h.text }}</button>
+</sc-for>
+</div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.admin }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;max-width:1200px;align-items:start">
+<sc-for list="{{ adminGroups }}" as="g" hint-placeholder-count="3">
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">{{ g.title }}</div>
+<div style="padding:6px 18px 14px">
+<sc-for list="{{ g.tools }}" as="t" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid #201d18">
+<div style="display:flex;flex-direction:column;gap:3px">
+<span style="font:500 13.5px 'IBM Plex Sans',sans-serif;color:#e9e5dd">{{ t.label }}</span>
+<span style="font:400 12px/1.4 'IBM Plex Sans',sans-serif;color:#8a837a">{{ t.desc }}</span>
+</div>
+<button type="button" onClick="{{ t.run }}" style="flex:none;padding:7px 13px;border:1px solid {{ t.border }};border-radius:5px;background:{{ t.bg }};color:{{ t.color }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer">{{ t.action }}</button>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.users }}">
+<div style="display:flex;flex-direction:column;gap:12px;max-width:1100px;height:100%">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:3px">
+<span style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#d9a44c">PANEL USERS</span>
+<span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:#918a80">Accounts that sign in to this web panel — not Project Zomboid players.</span>
+</div>
+<button type="button" onClick="{{ actions.openAddUser }}" style="padding:9px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Add User</button>
+</div>
+<div style="border:1px solid #26231e;border-radius:8px;overflow:hidden;background:#141210">
+<div style="display:grid;grid-template-columns:minmax(0,1.4fr) 0.9fr 0.8fr 1.2fr 44px;gap:12px;padding:11px 16px;border-bottom:1px solid #26231e;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#6b655d">
+<span>USERNAME</span><span>ROLE</span><span>STATUS</span><span>LAST LOGIN</span><span></span>
+</div>
+<sc-if value="{{ usersEmpty }}">
+<div style="padding:30px 18px;text-align:center;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6b655d">No panel users to display.</div>
+</sc-if>
+<sc-for list="{{ userRows }}" as="u" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:minmax(0,1.4fr) 0.9fr 0.8fr 1.2fr 44px;gap:12px;padding:12px 16px;border-bottom:1px solid #1c1a16;align-items:center">
+<span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#e9e5dd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ u.username }}{{ u.selfTag }}</span>
+<span style="justify-self:start;padding:3px 9px;border:1px solid {{ u.roleBorder }};border-radius:4px;font:500 11px 'IBM Plex Mono',monospace;color:{{ u.roleColor }}">{{ u.roleLabel }}</span>
+<span style="font:400 12px 'IBM Plex Sans',sans-serif;color:{{ u.statusColor }}">{{ u.statusText }}</span>
+<span style="font:400 12px 'IBM Plex Mono',monospace;color:#918a80;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ u.lastLogin }}</span>
+<button type="button" onClick="{{ u.menu }}" aria-label="User actions" style="width:28px;height:26px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 12px 'IBM Plex Sans',sans-serif" style-hover="background:#241f19;color:#e9e5dd">•••</button>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ page.activity }}">
+<div style="display:flex;flex-direction:column;gap:16px;max-width:840px">
+<sc-for list="{{ activityDays }}" as="d" hint-placeholder-count="2">
+<section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
+<div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">{{ d.day }}</div>
+<div style="padding:6px 18px 14px">
+<sc-for list="{{ d.items }}" as="a" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:52px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid #201d18">
+<span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#57524b">{{ a.at }}</span>
+<div style="display:flex;flex-direction:column;gap:4px">
+<span style="font:400 13px/1.45 'IBM Plex Sans',sans-serif;color:#cfc9c0"><strong style="font-weight:600;color:#e9e5dd">{{ a.actor }}</strong> {{ a.text }}</span>
+<span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#8a837a">{{ a.detail }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-for>
+</div>
+</sc-if>
+
+</main>
+</div>
+
+<sc-if value="{{ detail.open }}">
+<div onClick="{{ actions.closeDetail }}" style="position:fixed;inset:0;background:rgba(6,5,4,.62);z-index:40"></div>
+<aside role="dialog" aria-label="Player details" style="position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);background:#161410;border-left:1px solid #34302a;z-index:41;display:flex;flex-direction:column;animation:pz-in .18s ease-out">
+<div style="padding:16px 20px;border-bottom:1px solid #26231e;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+<div>
+<div style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#6b655d">PLAYER</div>
+<div style="font:600 20px 'IBM Plex Sans',sans-serif;color:#e9e5dd;margin-top:6px">{{ detail.username }}</div>
+</div>
+<button type="button" onClick="{{ actions.closeDetail }}" aria-label="Close panel" style="width:28px;height:28px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 13px 'IBM Plex Sans',sans-serif">✕</button>
+</div>
+<div style="flex:1;overflow-y:auto;padding:16px 20px 40px;display:flex;flex-direction:column;gap:18px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#26231e;border:1px solid #26231e;border-radius:6px;overflow:hidden">
+<sc-for list="{{ detail.facts }}" as="f" hint-placeholder-count="6">
+<div style="background:#191713;padding:11px 13px;display:flex;flex-direction:column;gap:5px">
+<span style="font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#6b655d">{{ f.label }}</span>
+<span style="font:500 12.5px 'IBM Plex Mono',monospace;color:{{ f.color }}">{{ f.value }}</span>
+</div>
+</sc-for>
+</div>
+<sc-for list="{{ detail.groups }}" as="g" hint-placeholder-count="5">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#6b655d">{{ g.title }}</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{ g.items }}" as="t" hint-placeholder-count="3">
+<button type="button" onClick="{{ t.run }}" style="padding:8px 12px;border:1px solid {{ t.border }};border-radius:5px;background:{{ t.bg }};color:{{ t.color }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px">{{ t.label }}<span style="font:500 10px 'IBM Plex Mono',monospace;color:{{ t.stateColor }}">{{ t.state }}</span></button>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</aside>
+</sc-if>
+
+<sc-if value="{{ menu.open }}">
+<div onClick="{{ actions.closeMenu }}" style="position:fixed;inset:0;z-index:45"></div>
+<div role="menu" style="position:fixed;top:{{ menu.top }};left:{{ menu.left }};z-index:46;min-width:186px;background:#1b1813;border:1px solid #34302a;border-radius:6px;padding:5px;box-shadow:0 14px 34px rgba(0,0,0,.55)">
+<sc-for list="{{ menu.items }}" as="i" hint-placeholder-count="4">
+<button type="button" role="menuitem" onClick="{{ i.run }}" style="display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:4px;background:none;color:{{ i.color }};font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">{{ i.label }}</button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ dlg.open }}">
+<div onClick="{{ actions.closeDialog }}" style="position:fixed;inset:0;background:rgba(6,5,4,.68);z-index:50"></div>
+<div role="dialog" aria-modal="true" aria-label="{{ dlg.title }}" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:51;width:min(460px,calc(100vw - 32px));background:#191713;border:1px solid {{ dlg.border }};border-radius:8px;box-shadow:0 24px 60px rgba(0,0,0,.6);animation:pz-in .16s ease-out;max-height:90vh;overflow-y:auto">
+<div style="padding:16px 20px 12px;border-bottom:1px solid #26231e">
+<div style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ dlg.kickerColor }}">{{ dlg.kicker }}</div>
+<div style="font:600 17px 'IBM Plex Sans',sans-serif;color:#e9e5dd;margin-top:7px">{{ dlg.title }}</div>
+</div>
+<div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+<span style="font:400 13px/1.55 'IBM Plex Sans',sans-serif;color:#a9a29a">{{ dlg.body }}</span>
+<sc-if value="{{ dlg.showTarget }}">
+<div style="display:flex;flex-direction:column;gap:4px;padding:11px 13px;border:1px solid #2b2822;border-radius:5px;background:#12110e">
+<span style="font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#6b655d">{{ dlg.targetLabel }}</span>
+<span style="font:500 14px 'IBM Plex Sans',sans-serif;color:#e9e5dd">{{ dlg.target }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ dlg.showText }}">
+<div style="display:flex;flex-direction:column;gap:6px">
+<label for="pz-dlg-text" style="font:500 11.5px 'IBM Plex Sans',sans-serif;color:#918a80">{{ dlg.textLabel }}</label>
+<input id="pz-dlg-text" value="{{ form.text }}" onChange="{{ form.onText }}" placeholder="{{ dlg.textPlaceholder }}" style="padding:9px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 13px 'IBM Plex Sans',sans-serif">
+</div>
+</sc-if>
+<sc-if value="{{ dlg.showPassword }}">
+<div style="display:flex;flex-direction:column;gap:6px">
+<label for="pz-dlg-password" style="font:500 11.5px 'IBM Plex Sans',sans-serif;color:#918a80">{{ dlg.passwordLabel }}</label>
+<input id="pz-dlg-password" type="password" autocomplete="new-password" value="{{ form.password }}" onChange="{{ form.onPassword }}" style="padding:9px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 13px 'IBM Plex Sans',sans-serif">
+<span style="font:400 11px/1.4 'IBM Plex Sans',sans-serif;color:#6b655d">{{ dlg.passwordHint }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ dlg.showConfirm }}">
+<div style="display:flex;flex-direction:column;gap:6px">
+<label for="pz-dlg-confirm" style="font:500 11.5px 'IBM Plex Sans',sans-serif;color:#918a80">{{ dlg.confirmFieldLabel }}</label>
+<input id="pz-dlg-confirm" type="password" autocomplete="new-password" value="{{ form.confirm }}" onChange="{{ form.onConfirm }}" style="padding:9px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 13px 'IBM Plex Sans',sans-serif">
+</div>
+</sc-if>
+<sc-if value="{{ dlg.showSelect }}">
+<div style="display:flex;flex-direction:column;gap:6px">
+<label for="pz-dlg-select" style="font:500 11.5px 'IBM Plex Sans',sans-serif;color:#918a80">{{ dlg.selectLabel }}</label>
+<select id="pz-dlg-select" value="{{ form.select }}" onChange="{{ form.onSelect }}" style="padding:9px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 13px 'IBM Plex Sans',sans-serif;appearance:none;cursor:pointer">
+<sc-for list="{{ dlg.selectOptions }}" as="o" hint-placeholder-count="3"><option value="{{ o }}">{{ o }}</option></sc-for>
+</select>
+</div>
+</sc-if>
+<sc-if value="{{ dlg.showCheck }}">
+<button type="button" onClick="{{ form.onCheck }}" aria-pressed="{{ form.check }}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#cfc9c0;font:400 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer;text-align:left">
+<span style="width:15px;height:15px;border:1px solid {{ form.checkBorder }};border-radius:3px;background:{{ form.checkBg }};color:#12110e;font:600 10px 'IBM Plex Mono',monospace;display:flex;align-items:center;justify-content:center">{{ form.checkMark }}</span>{{ dlg.checkLabel }}</button>
+</sc-if>
+<sc-if value="{{ dlg.showRadio }}">
+<div style="display:flex;flex-direction:column;gap:6px">
+<span style="font:500 11.5px 'IBM Plex Sans',sans-serif;color:#918a80">{{ dlg.radioLabel }}</span>
+<div style="display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ dlg.radioOptions }}" as="o" hint-placeholder-count="4">
+<button type="button" onClick="{{ o.pick }}" aria-pressed="{{ o.on }}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid {{ o.border }};border-radius:5px;background:{{ o.bg }};color:{{ o.color }};font:400 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer;text-align:left">
+<span style="width:13px;height:13px;border-radius:50%;border:1px solid {{ o.dotBorder }};display:flex;align-items:center;justify-content:center"><span style="width:7px;height:7px;border-radius:50%;background:{{ o.dotBg }}"></span></span>{{ o.label }}</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ dlg.showWarning }}">
+<div style="display:flex;gap:10px;padding:11px 13px;border:1px solid #4a2a22;border-radius:5px;background:#1d1512">
+<span style="font:600 12px 'IBM Plex Mono',monospace;color:#c4553f">⚠</span>
+<span style="font:400 12px/1.5 'IBM Plex Sans',sans-serif;color:#d1836e">{{ dlg.warning }}</span>
+</div>
+</sc-if>
+</div>
+<div style="padding:13px 20px 16px;border-top:1px solid #26231e;display:flex;justify-content:flex-end;gap:9px">
+<button type="button" onClick="{{ actions.closeDialog }}" style="padding:9px 15px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Cancel</button>
+<button type="button" onClick="{{ dlg.confirm }}" style="padding:9px 15px;border:1px solid {{ dlg.confirmBorder }};border-radius:5px;background:{{ dlg.confirmBg }};color:{{ dlg.confirmColor }};font:600 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer">{{ dlg.confirmLabel }}</button>
+</div>
+</div>
+</sc-if>
+
+<div aria-live="polite" style="position:fixed;right:18px;bottom:18px;z-index:60;display:flex;flex-direction:column;gap:9px;align-items:flex-end">
+<sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+<div style="display:flex;align-items:flex-start;gap:10px;min-width:250px;max-width:360px;padding:11px 13px;border:1px solid {{ t.border }};border-radius:6px;background:#1b1813;box-shadow:0 12px 30px rgba(0,0,0,.5);animation:pz-in .18s ease-out">
+<span style="font:600 12px 'IBM Plex Mono',monospace;color:{{ t.color }}">{{ t.icon }}</span>
+<div style="display:flex;flex-direction:column;gap:3px">
+<span style="font:500 12.5px/1.4 'IBM Plex Sans',sans-serif;color:#e9e5dd">{{ t.text }}</span>
+<span style="font:400 11.5px/1.4 'IBM Plex Sans',sans-serif;color:#8a837a">{{ t.detail }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;serverState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;online&quot;,&quot;offline&quot;,&quot;starting&quot;,&quot;stopping&quot;,&quot;restarting&quot;,&quot;updating&quot;,&quot;unreachable&quot;],&quot;default&quot;:&quot;online&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Simulation&quot;},&quot;dataState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ready&quot;,&quot;loading&quot;,&quot;error&quot;],&quot;default&quot;:&quot;ready&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Simulation&quot;},&quot;liveUpdates&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Simulation&quot;}}">
+const C = {
+  text: "#e9e5dd", dim: "#918a80", faint: "#57524b",
+  amber: "#d9a44c", green: "#79a35f", red: "#c4553f", warn: "#d3922f", blue: "#7f9bb5",
+};
+const STATUS_META = {
+  online: { label: "ONLINE", color: C.green, pulse: false },
+  offline: { label: "OFFLINE", color: "#7a736a", pulse: false },
+  starting: { label: "STARTING", color: C.amber, pulse: true, text: "Project Zomboid is starting… waiting for the server to accept connections." },
+  stopping: { label: "STOPPING", color: C.warn, pulse: true, text: "Stopping the server process. Players have been disconnected." },
+  restarting: { label: "RESTARTING", color: C.amber, pulse: true, text: "Restarting — the world was saved before shutdown." },
+  updating: { label: "UPDATING", color: C.blue, pulse: true, text: "Applying Steam Workshop and build updates." },
+  unreachable: { label: "UNREACHABLE", color: C.red, pulse: true, text: "The panel backend cannot reach AMP or RCON. Last known values shown." },
+};
+const NAV = [
+  { label: "OVERVIEW", items: [{ id: "dashboard", label: "Dashboard" }] },
+  { label: "SERVER", items: [
+    { id: "players", label: "Players" }, { id: "whitelist", label: "Whitelist" },
+    { id: "settings", label: "Server Settings" }, { id: "sandbox", label: "Sandbox Settings" },
+    { id: "mods", label: "Mods" }, { id: "logs", label: "Logs" }] },
+  { label: "ADMINISTRATION", items: [{ id: "admin", label: "Admin Tools" }, { id: "users", label: "Users & Access", adminOnly: true }] },
+  { label: "SYSTEM", items: [{ id: "console", label: "Server Console" }, { id: "activity", label: "Activity Log" }] },
+];
+// Panel role: canonical backend id <-> frontend label.
+const PANEL_ROLES = [{ id: "admin", label: "Admin" }, { id: "moderator", label: "Moderator" }, { id: "readonly", label: "Read Only" }];
+const ROLE_COLORS = { admin: { color: "#e8bf74", border: "#6b5628" }, moderator: { color: "#a8cf87", border: "#45632f" }, readonly: { color: "#7f9bb5", border: "#2f4453" } };
+const roleLabel = (id) => (PANEL_ROLES.find((r) => r.id === id) || { label: id }).label;
+const roleId = (label) => (PANEL_ROLES.find((r) => r.label === label) || { id: label }).id;
+const TITLES = { dashboard: "Dashboard", players: "Players", whitelist: "Whitelist", settings: "Server Settings", sandbox: "Sandbox Settings", mods: "Mods", logs: "Server Logs", console: "Server Console", admin: "Admin Tools", users: "Users & Access", activity: "Activity Log" };
+const ACCESS_META = { Admin: { color: "#e8bf74", border: "#6b5628" }, Moderator: { color: "#a8cf87", border: "#45632f" }, Player: { color: "#a9a29a", border: "#34302a" }, Observer: { color: "#7f9bb5", border: "#2f4453" } };
+const fmtUptime = (s) => { const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60); return (d ? d + "d " : "") + h + "h " + m + "m"; };
+const fmtSession = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return (h ? h + "h " : "") + m + "m"; };
+
+class Component extends DCLogic {
+  state = {
+    route: "dashboard", loading: true, error: null, api: null,
+    srv: null, chart: [], players: [], whitelist: { users: [], steamIds: [] },
+    settings: [], settingsBase: [], sandbox: [], sandboxBase: [], mods: [], logs: [], consoleLines: [], activity: [],
+    me: null, panelUsers: [], usersLoaded: false,
+    dirtySettings: {}, dirtySandbox: {},
+    sandboxCat: "General", sandboxSearch: "", playerSearch: "", playerFilter: "All", modSearch: "",
+    logFilter: "All", logSearch: "", paused: false, autoscroll: true,
+    consoleInput: "", history: [], broadcast: "",
+    dialog: null, form: {}, menu: null, detail: null, toasts: [], powers: {},
+    updatedAt: Date.now(), now: Date.now(),
+  };
+  logsRef = React.createRef();
+  consoleRef = React.createRef();
+
+  componentDidMount() {
+    this.load();
+    this.timer = setInterval(() => {
+      const a = this.state.api;
+      if (!a) return;
+      const live = this.props.liveUpdates !== false;
+      this.setState((s) => {
+        const srv = live ? a.serverApi.tick() : s.srv;
+        return { srv: srv || s.srv, chart: live ? a.serverApi.getHistorySync() : s.chart, now: Date.now(), updatedAt: live ? Date.now() : s.updatedAt };
+      });
+    }, 5000);
+    this.clock = setInterval(() => this.setState({ now: Date.now() }), 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.clock); clearInterval(this.statusPoll); if (this.unsubLogs) this.unsubLogs(); }
+  componentDidUpdate(prev) {
+    if (prev.serverState !== this.props.serverState && this.props.serverState && this.state.api) {
+      const srv = this.state.api.serverApi.setStatus(this.props.serverState);
+      this.setState({ srv });
+    }
+    if (prev.dataState !== this.props.dataState) this.load();
+    if (this.state.route === "users" && !this.state.usersLoaded) this.loadUsers();
+    if (this.state.autoscroll && this.logsRef.current) this.logsRef.current.scrollTop = this.logsRef.current.scrollHeight;
+    if (this.consoleRef.current) this.consoleRef.current.scrollTop = this.consoleRef.current.scrollHeight;
+  }
+
+  async load() {
+    const ds = this.props.dataState || "ready";
+    if (ds === "loading") { this.setState({ loading: true, error: null }); return; }
+    this.setState({ loading: true, error: null });
+    const api = this.state.api || (await import("./api.js"));
+    if (ds === "error") { this.setState({ api, loading: false, error: "unreachable" }); return; }
+    const [srv, chart, players, whitelist, settings, sandbox, mods, logs, consoleLines, activity, me] = await Promise.all([
+      api.serverApi.getOverview(), api.serverApi.getHistory(), api.playersApi.list(), api.whitelistApi.list(),
+      api.settingsApi.get(), api.sandboxApi.get(), api.modsApi.list(), api.logsApi.recent(), api.consoleApi.recent(), api.activityApi.list(),
+      api.authApi.me().catch(() => ({ authenticated: false })),
+    ]);
+    if (this.props.serverState) api.serverApi.setStatus(this.props.serverState);
+    this.setState({
+      api, loading: false, error: null, srv: this.props.serverState ? { ...srv, status: this.props.serverState } : srv,
+      chart, players, whitelist, settings, settingsBase: JSON.parse(JSON.stringify(settings)),
+      sandbox, sandboxBase: JSON.parse(JSON.stringify(sandbox)), mods, logs, consoleLines, activity, updatedAt: Date.now(),
+      me: me && me.authenticated ? me.user : null,
+    });
+    if (!this.unsubLogs && this.props.liveUpdates !== false) {
+      this.unsubLogs = api.logsApi.subscribe((line) => {
+        if (this.state.paused) return;
+        this.setState((s) => ({ logs: s.logs.concat(line).slice(-260) }));
+      });
+    }
+    this.statusPoll = this.statusPoll || setInterval(async () => {
+      if (!this.state.api) return;
+      const s = await this.state.api.serverApi.getOverview();
+      this.setState({ srv: s });
+    }, 2000);
+  }
+
+  /* ---------------------------------------------------------- utilities */
+  toast(kind, text, detail) {
+    const id = Math.random().toString(36).slice(2);
+    const meta = { ok: { icon: "✓", color: C.green, border: "#3c5230" }, warn: { icon: "⚠", color: C.warn, border: "#5a4520" }, err: { icon: "✕", color: C.red, border: "#4a2a22" }, info: { icon: "•", color: C.amber, border: "#4a3d20" } }[kind] || {};
+    this.setState((s) => ({ toasts: s.toasts.concat({ id, text, detail, ...meta }) }));
+    setTimeout(() => this.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 4200);
+  }
+  logActivity(text, detail) {
+    if (!this.state.api) return;
+    this.setState({ activity: this.state.api.activityApi.record({ text, detail }) });
+  }
+  go = (route) => () => this.setState({ route, menu: null });
+  openDialog(cfg, form) { this.setState({ dialog: cfg, form: form || {}, menu: null }); }
+  closeDialog = () => this.setState({ dialog: null, form: {} });
+  setField = (k) => (e) => { const v = e && e.target ? (e.target.type === "checkbox" ? e.target.checked : e.target.value) : e; this.setState((s) => ({ form: { ...s.form, [k]: v } })); };
+
+  /* ----------------------------------------------------- server actions */
+  saveWorld = async () => {
+    if (!this.state.srv || this.state.srv.status !== "online") { this.toast("warn", "Server is not online", "Start the server before saving the world."); return; }
+    this.toast("info", "Saving world…");
+    await this.state.api.serverApi.save();
+    this.toast("ok", "World successfully saved", "Took 1.8s");
+    this.logActivity("saved the world");
+  };
+  broadcast = async (msg) => {
+    const text = (msg !== undefined ? msg : this.state.broadcast).trim();
+    if (!text) { this.toast("warn", "Nothing to broadcast", "Type a message first."); return; }
+    await this.state.api.serverApi.broadcast(text);
+    this.toast("ok", "Message broadcast to players", text);
+    this.logActivity("broadcast a message", '"' + text + '"');
+    this.setState({ broadcast: "" });
+  };
+
+  openStop = () => this.openDialog({
+    type: "stop", kicker: "DESTRUCTIVE", kickerColor: C.red, border: "#4a2a22", title: "Stop Server?",
+    body: "The world will be saved and the server process stopped. Players will be disconnected until it is started again.",
+    warning: this.onlineCount() + " player(s) are currently connected.", confirmLabel: "Stop Server",
+    confirmBg: "#26160f", confirmBorder: "#573026", confirmColor: "#e28c74",
+    onConfirm: async () => { this.closeDialog(); await this.state.api.serverApi.stop(); this.toast("warn", "Stopping server", "Waiting for the process to exit."); this.logActivity("stopped the server"); },
+  });
+  openRestart = () => this.openDialog({
+    type: "restart", kicker: "SERVER LIFECYCLE", kickerColor: C.amber, border: "#5a4520", title: "Restart Server",
+    body: this.onlineCount() + " player(s) are currently connected. They will be disconnected and can rejoin once the server is back.",
+    showText: true, textLabel: "Optional broadcast message", textPlaceholder: "Server restarting in 5 minutes.",
+    showRadio: true, radioLabel: "Restart", radioValues: ["Now", "In 1 minute", "In 5 minutes", "In 10 minutes"],
+    confirmLabel: "Schedule Restart", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+    onConfirm: async () => {
+      const when = this.state.form.radio || "Now";
+      const msg = (this.state.form.text || "").trim();
+      this.closeDialog();
+      if (msg) await this.state.api.serverApi.broadcast(msg);
+      if (when === "Now") { await this.state.api.serverApi.restart(); this.toast("warn", "Restarting server", "The world was saved first."); }
+      else this.toast("ok", "Restart scheduled", when + (msg ? " · players notified" : ""));
+      this.logActivity("scheduled a server restart", when + (msg ? ' · "' + msg + '"' : ""));
+    },
+  }, { radio: "In 5 minutes", text: "Server restarting in 5 minutes." });
+  openBroadcast = () => this.openDialog({
+    type: "broadcast", kicker: "RCON · SERVERMSG", kickerColor: C.amber, border: "#34302a", title: "Broadcast Message",
+    body: "Sent to every player currently in-game.", showText: true, textLabel: "Message", textPlaceholder: "Server will restart in 10 minutes.",
+    confirmLabel: "Send Message", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+    onConfirm: async () => { const t = this.state.form.text; this.closeDialog(); await this.broadcast(t || ""); },
+  }, { text: "" });
+  onlineCount() { return this.state.players.filter((p) => p.online).length; }
+
+  /* ----------------------------------------------------- player actions */
+  playerMenuItems(p) {
+    return [
+      { label: "View Details", run: () => this.setState({ detail: p.username, menu: null }) },
+      { label: "Kick Player", run: () => this.openKick(p) },
+      { label: "Ban Player", color: "#d1836e", run: () => this.openBan(p) },
+      { label: "Change Access Level", run: () => this.openAccess(p) },
+      { label: "Admin Tools", run: () => this.setState({ detail: p.username, menu: null }) },
+    ];
+  }
+  openKick(p) {
+    this.openDialog({
+      type: "kick", kicker: "SESSION", kickerColor: C.warn, border: "#5a4520", title: "Kick Player",
+      body: "The player is disconnected immediately and may rejoin unless banned.",
+      showTarget: true, targetLabel: "PLAYER", target: p.username,
+      showText: true, textLabel: "Reason", textPlaceholder: "AFK for 40 minutes",
+      confirmLabel: "Kick Player", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+      onConfirm: async () => {
+        const reason = (this.state.form.text || "").trim(); this.closeDialog();
+        await this.state.api.playersApi.kick(p.username, reason);
+        this.setState({ players: await this.state.api.playersApi.list(), detail: null });
+        this.toast("ok", "Player kicked", p.username + (reason ? " · " + reason : ""));
+        this.logActivity("kicked " + p.username, reason ? "Reason: " + reason : undefined);
+      },
+    }, { text: "" });
+  }
+  openBan(p) {
+    this.openDialog({
+      type: "ban", kicker: "DESTRUCTIVE", kickerColor: C.red, border: "#4a2a22", title: "Ban Player",
+      body: "The player is disconnected and blocked from rejoining. Unbanning must be done manually.",
+      showTarget: true, targetLabel: "PLAYER", target: p.username,
+      showText: true, textLabel: "Reason", textPlaceholder: "Spawn killing",
+      showCheck: true, checkLabel: "Also ban IP address",
+      warning: "This is a destructive administrative action and is recorded in the activity log.",
+      confirmLabel: "Ban Player", confirmBg: "#26160f", confirmBorder: "#573026", confirmColor: "#e28c74",
+      onConfirm: async () => {
+        const { text, check } = this.state.form; this.closeDialog();
+        await this.state.api.playersApi.ban(p.username, { reason: text, banIp: check });
+        this.setState({ players: await this.state.api.playersApi.list(), detail: null });
+        this.toast("ok", "Player banned", p.username + (check ? " · IP banned" : ""));
+        this.logActivity("banned " + p.username, (text ? "Reason: " + text : "No reason given") + (check ? " · IP ban" : ""));
+      },
+    }, { text: "", check: false });
+  }
+  openAccess(p) {
+    this.openDialog({
+      type: "access", kicker: "PERMISSIONS", kickerColor: C.amber, border: "#34302a", title: "Change Access Level",
+      body: "Access levels take effect the next time the player connects.",
+      showTarget: true, targetLabel: "PLAYER", target: p.username,
+      showSelect: true, selectLabel: "Access level", selectOptions: ["Admin", "Moderator", "Player", "Observer"],
+      confirmLabel: "Apply", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+      onConfirm: async () => {
+        const level = this.state.form.select || p.accessLevel; this.closeDialog();
+        await this.state.api.playersApi.setAccessLevel(p.username, level);
+        this.setState({ players: await this.state.api.playersApi.list() });
+        this.toast("ok", "Access level updated", p.username + " → " + level);
+        this.logActivity("set " + p.username + " access level to " + level);
+      },
+    }, { select: p.accessLevel });
+  }
+  openGive(p, kind) {
+    const cfg = kind === "item"
+      ? { title: "Give Item", selectLabel: "Item", selectOptions: ["Baseball Bat", "Bandage", "Canned Beans", "Hunting Rifle", "Water Bottle", "Screwdriver"], textLabel: "Quantity", kicker: "CHARACTER" }
+      : { title: "Give XP", selectLabel: "Skill", selectOptions: ["Carpentry", "Cooking", "Fitness", "Strength", "Aiming", "Mechanics"], textLabel: "XP amount", kicker: "CHARACTER" };
+    this.openDialog({
+      type: "give", kicker: cfg.kicker, kickerColor: C.amber, border: "#34302a", title: cfg.title,
+      body: "Applied to the player's current character.", showTarget: true, targetLabel: "PLAYER", target: p.username,
+      showSelect: true, selectLabel: cfg.selectLabel, selectOptions: cfg.selectOptions,
+      showText: true, textLabel: cfg.textLabel, textPlaceholder: kind === "item" ? "1" : "500",
+      confirmLabel: cfg.title, confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+      onConfirm: async () => {
+        const { select, text } = this.state.form; this.closeDialog();
+        if (kind === "item") await this.state.api.playersApi.giveItem(p.username, select, text);
+        else await this.state.api.playersApi.giveXp(p.username, select, text);
+        this.toast("ok", cfg.title === "Give Item" ? "Item given" : "XP granted", p.username + " · " + select + " ×" + (text || 1));
+        this.logActivity("gave " + p.username + " " + select + " ×" + (text || 1));
+      },
+    }, { select: cfg.selectOptions[0], text: kind === "item" ? "1" : "500" });
+  }
+  openSpawnVehicle(p) {
+    this.openDialog({
+      type: "vehicle", kicker: "WORLD", kickerColor: C.amber, border: "#34302a", title: "Spawn Vehicle",
+      body: "The vehicle appears next to the player.", showTarget: true, targetLabel: "PLAYER", target: p.username,
+      showSelect: true, selectLabel: "Vehicle", selectOptions: ["Chevalier Dart", "Franklin Valuline Van", "Dash Rancher", "Masterson Horizon", "Police Cruiser"],
+      confirmLabel: "Spawn Vehicle", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+      onConfirm: async () => { const v = this.state.form.select; this.closeDialog(); await this.state.api.playersApi.spawnVehicle(p.username, v); this.toast("ok", "Vehicle spawned", p.username + " · " + v); this.logActivity("spawned a " + v + " for " + p.username); },
+    }, { select: "Chevalier Dart" });
+  }
+  togglePower = (p, power) => async () => {
+    const key = p.username + ":" + power;
+    const on = !this.state.powers[key];
+    this.setState((s) => ({ powers: { ...s.powers, [key]: on } }));
+    await this.state.api.playersApi.runPower(p.username, power, on);
+    this.toast("ok", power + (on ? " enabled" : " disabled"), p.username);
+    this.logActivity((on ? "enabled " : "disabled ") + power + " for " + p.username);
+  };
+
+  /* ------------------------------------------------------------ configs */
+  editSetting = (si, fi) => (val) => {
+    this.setState((s) => {
+      const settings = s.settings.map((sec, i) => i !== si ? sec : { ...sec, fields: sec.fields.map((f, j) => j !== fi ? f : { ...f, value: val }) });
+      const base = s.settingsBase[si].fields[fi].value;
+      const dirty = { ...s.dirtySettings };
+      const k = si + ":" + fi;
+      if (String(base) === String(val)) delete dirty[k]; else dirty[k] = true;
+      return { settings, dirtySettings: dirty };
+    });
+  };
+  saveSettings = async () => {
+    if (!Object.keys(this.state.dirtySettings).length) { this.toast("info", "Nothing to save"); return; }
+    const changed = Object.keys(this.state.dirtySettings).length;
+    const needsRestart = Object.keys(this.state.dirtySettings).some((k) => { const [si, fi] = k.split(":"); return this.state.settings[si].fields[fi].restart; });
+    await this.state.api.settingsApi.save(this.state.settings);
+    this.setState({ settingsBase: JSON.parse(JSON.stringify(this.state.settings)), dirtySettings: {} });
+    this.toast("ok", "Settings updated", changed + " setting(s) written to server config");
+    if (needsRestart) this.toast("warn", "Server restart required", "Some changed values only apply after a restart.");
+    this.logActivity("updated server settings", changed + " value(s) changed");
+  };
+  discardSettings = () => this.setState((s) => ({ settings: JSON.parse(JSON.stringify(s.settingsBase)), dirtySettings: {} }));
+  editSandbox = (ci, si, fi) => (val) => {
+    this.setState((s) => {
+      const sandbox = s.sandbox.map((c, a) => a !== ci ? c : { ...c, sections: c.sections.map((sec, b) => b !== si ? sec : { ...sec, fields: sec.fields.map((f, d) => d !== fi ? f : { ...f, value: val }) }) });
+      const base = s.sandboxBase[ci].sections[si].fields[fi].value;
+      const dirty = { ...s.dirtySandbox }; const k = ci + ":" + si + ":" + fi;
+      if (String(base) === String(val)) delete dirty[k]; else dirty[k] = true;
+      return { sandbox, dirtySandbox: dirty };
+    });
+  };
+  saveSandbox = async () => {
+    const n = Object.keys(this.state.dirtySandbox).length;
+    if (!n) { this.toast("info", "Nothing to save"); return; }
+    await this.state.api.sandboxApi.save(this.state.sandbox);
+    this.setState({ sandboxBase: JSON.parse(JSON.stringify(this.state.sandbox)), dirtySandbox: {} });
+    this.toast("ok", "Sandbox settings updated", n + " value(s) saved · applies on next restart");
+    this.logActivity("updated sandbox settings", n + " value(s) changed");
+  };
+  discardSandbox = () => this.setState((s) => ({ sandbox: JSON.parse(JSON.stringify(s.sandboxBase)), dirtySandbox: {} }));
+
+  decorate(f, id, onChange, dirty) {
+    const isToggle = f.type === "toggle";
+    const on = !!f.value;
+    return {
+      ...f, id, dirtyMark: dirty ? "MODIFIED" : "",
+      desc: f.desc || "", unit: f.unit ? f.unit.toUpperCase() : "", step: f.step || 1,
+      placeholder: f.secret ? "not set" : "",
+      isToggle, isSelect: f.type === "select", isNumber: f.type === "number", isText: f.type === "text", isTextarea: f.type === "textarea",
+      value: isToggle ? on : f.value,
+      toggle: () => onChange(!on),
+      toggleLabel: on ? "Enabled" : "Disabled",
+      toggleBg: on ? "#1b2415" : "#1a1814", toggleBorder: on ? "#45632f" : "#34302a", toggleColor: on ? "#a8cf87" : "#918a80",
+      trackBg: on ? "#45632f" : "#2f2b25", knobBg: on ? "#a8cf87" : "#7a736a", knobPos: on ? "flex-end" : "flex-start",
+      onChange: (e) => onChange(f.type === "number" ? Number(e.target.value) : e.target.value),
+    };
+  }
+
+  /* --------------------------------------------------------------- mods */
+  modAction = (fn, ...args) => async () => { const mods = await fn(...args); this.setState({ mods }); };
+  // Step 1: enter Workshop ID, then look up its real Project Zomboid Mod ID(s).
+  openAddMod = () => this.openDialog({
+    type: "addmod", kicker: "STEAM WORKSHOP", kickerColor: C.amber, border: "#34302a", title: "Add Workshop Mod",
+    body: "Enter the Steam Workshop ID. The panel looks up its Project Zomboid Mod ID(s) from the downloaded content.",
+    showText: true, textLabel: "Workshop ID", textPlaceholder: "3561213456",
+    confirmLabel: "Lookup", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+    onConfirm: async () => {
+      const id = (this.state.form.text || "").trim();
+      if (!/^\d{6,12}$/.test(id)) { this.toast("err", "Invalid Workshop ID", "IDs are 6–12 digits."); return; }
+      let res;
+      try { res = await this.state.api.modsApi.lookup(id); }
+      catch (e) { this.toast("err", "Lookup failed", e.message || ""); return; }
+      this.openAddModConfirm(id, res);
+    },
+  }, { text: "" });
+
+  // Step 2: confirm the Mod ID(s). Discovered IDs are pre-filled and editable
+  // (comma-separated); if none were found, the field is empty for manual entry.
+  openAddModConfirm(workshopId, res) {
+    const found = !!(res && res.modIds && res.modIds.length);
+    const label = res && res.name ? res.name : "Workshop " + workshopId;
+    this.openDialog({
+      type: "addmodconfirm", kicker: "STEAM WORKSHOP", kickerColor: C.amber, border: "#34302a", title: label,
+      body: found
+        ? "Mod ID(s) found. Choose which to enable by editing the comma-separated list, or add your own."
+        : "We could not determine the Project Zomboid Mod ID automatically. Enter one or more Mod IDs (comma-separated).",
+      showTarget: true, targetLabel: "WORKSHOP ITEM",
+      target: workshopId + (res && res.metadataAvailable ? "" : " · metadata unavailable"),
+      showText: true, textLabel: "Mod IDs", textPlaceholder: "psychology_skill",
+      confirmLabel: "Add Mod", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+      onConfirm: async () => {
+        const raw = (this.state.form.text || "").trim();
+        const modIds = raw.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+        if (!modIds.length) { this.toast("err", "Mod ID required", "Enter at least one Mod ID."); return; }
+        if (!modIds.every((id) => /^[A-Za-z0-9_.-]{1,64}$/.test(id) && id.indexOf("..") < 0)) {
+          this.toast("err", "Invalid Mod ID", "Use only letters, digits, _ . and -"); return;
+        }
+        this.closeDialog();
+        try {
+          this.setState({ mods: await this.state.api.modsApi.add({ workshopId, modIds }) });
+          this.toast("ok", "Mod added", workshopId + " · " + modIds.join(", ") + " · restart required");
+          this.logActivity("installed Workshop item " + workshopId + " (" + modIds.join(", ") + ")");
+        } catch (e) { this.toast("err", "Add failed", e.message || ""); }
+      },
+    }, { text: (res && res.modIds ? res.modIds.join(", ") : "") });
+  }
+  removeMod(m) {
+    this.openDialog({
+      type: "removemod", kicker: "DESTRUCTIVE", kickerColor: C.red, border: "#4a2a22", title: "Remove Mod?",
+      body: "Removing a mod can permanently destroy items, vehicles and buildings that depend on it.",
+      showTarget: true, targetLabel: "MOD", target: (m.displayName || m.name) + (m.workshopId ? " · " + m.workshopId : " · local"),
+      warning: "Back up the world save before removing content mods.",
+      confirmLabel: "Remove Mod", confirmBg: "#26160f", confirmBorder: "#573026", confirmColor: "#e28c74",
+      onConfirm: async () => {
+        this.closeDialog();
+        const mods = m.workshopId
+          ? await this.state.api.modsApi.remove(m.workshopId)
+          : await this.state.api.modsApi.removeStandalone((m.modIds && m.modIds[0]) || "");
+        this.setState({ mods });
+        this.toast("ok", "Mod removed", m.displayName || m.name);
+        this.logActivity("removed mod " + (m.displayName || m.name));
+      },
+    });
+  }
+  checkMods = async () => { this.toast("info", "Checking Workshop for updates…"); const r = await this.state.api.modsApi.checkUpdates(); this.toast(r.outdated ? "warn" : "ok", r.outdated ? r.outdated + " mod(s) need updating" : "All mods up to date", r.checked + " item(s) checked"); };
+  updateMods = async () => { const out = this.state.mods.filter((m) => m.updateStatus === "update_available").length; if (!out) { this.toast("info", "Nothing to update"); return; } this.toast("info", "Updating " + out + " mod(s)…"); this.setState({ mods: await this.state.api.modsApi.updateAll() }); this.toast("ok", "Mods updated", "Restart the server to load new versions"); this.logActivity("updated " + out + " Workshop mod(s)"); };
+
+  /* ----------------------------------------------- PANEL users & access */
+  loadUsers = async () => {
+    if (!this.state.api || !this.state.me || this.state.me.role !== "admin") return;
+    try { this.setState({ panelUsers: await this.state.api.usersApi.list(), usersLoaded: true }); }
+    catch (e) { this.toast("err", "Could not load users", e.message || ""); }
+  };
+  userErr = (e) => this.toast("err", "Action failed", (e && e.message) || "");
+  openAddUser = () => this.openDialog({
+    type: "adduser", kicker: "PANEL USER", kickerColor: C.amber, border: "#34302a", title: "Add Panel User",
+    body: "Create a web-panel administration account. This is NOT a Project Zomboid player.",
+    showText: true, textLabel: "Username", textPlaceholder: "bel",
+    showPassword: true, passwordLabel: "Password", passwordHint: "At least 10 characters, including a letter and a number.",
+    showConfirm: true, confirmFieldLabel: "Confirm Password",
+    showSelect: true, selectLabel: "Access Level", selectOptions: PANEL_ROLES.map((r) => r.label),
+    confirmLabel: "Create User", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+    onConfirm: async () => {
+      const f = this.state.form; const username = (f.text || "").trim();
+      if (!/^[A-Za-z0-9_.\-]{3,32}$/.test(username)) { this.toast("err", "Invalid username", "3–32 chars: letters, digits, _ . -"); return; }
+      if ((f.password || "").length < 10 || !/[A-Za-z]/.test(f.password || "") || !/[0-9]/.test(f.password || "")) { this.toast("err", "Weak password", "At least 10 chars with a letter and a number."); return; }
+      if (f.password !== f.confirm) { this.toast("err", "Passwords do not match"); return; }
+      const role = roleId(f.select || "Admin");
+      try { await this.state.api.usersApi.create({ username, password: f.password, role }); }
+      catch (e) { this.userErr(e); return; }
+      this.closeDialog(); await this.loadUsers();
+      this.toast("ok", "Panel user created", username + " · " + roleLabel(role));
+      this.logActivity("created panel user " + username, "Role: " + roleLabel(role));
+    },
+  }, { text: "", password: "", confirm: "", select: "Admin" });
+  userMenuItems(u) {
+    const isSelf = this.state.me && this.state.me.id === u.id;
+    return [
+      { label: "Change Role", run: () => this.openChangeRole(u) },
+      { label: "Reset Password", run: () => this.openResetPassword(u) },
+      u.active
+        ? { label: isSelf ? "Disable (self)" : "Disable User", run: () => this.openToggleActive(u, false), color: C.warn }
+        : { label: "Enable User", run: () => this.openToggleActive(u, true), color: C.green },
+      { label: "Delete User", run: () => this.openDeleteUser(u), color: C.red },
+    ];
+  }
+  openUserMenu(u, e) { const r = e.currentTarget.getBoundingClientRect(); this.setState({ menu: { items: this.userMenuItems(u), top: Math.min(r.bottom + 6, window.innerHeight - 190) + "px", left: Math.max(12, r.right - 176) + "px" } }); }
+  openChangeRole(u) {
+    const demotingAdmin = u.role === "admin";
+    this.openDialog({
+      type: "userrole", kicker: "PANEL USER", kickerColor: C.amber, border: "#34302a", title: "Change Role",
+      body: "Panel access level for " + u.username + ". Takes effect immediately; the user's active sessions are ended.",
+      showTarget: true, targetLabel: "PANEL USER", target: u.username,
+      showSelect: true, selectLabel: "Access Level", selectOptions: PANEL_ROLES.map((r) => r.label),
+      warning: demotingAdmin ? "Demoting an admin removes their panel administration rights." : "",
+      confirmLabel: "Change Role", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+      onConfirm: async () => {
+        const role = roleId(this.state.form.select || roleLabel(u.role)); this.closeDialog();
+        if (role === u.role) return;
+        try { await this.state.api.usersApi.setRole(u.id, role); } catch (e) { this.userErr(e); return; }
+        await this.loadUsers();
+        this.toast("ok", "Role updated", u.username + " → " + roleLabel(role));
+        this.logActivity("changed " + u.username + "'s role", roleLabel(u.role) + " → " + roleLabel(role));
+      },
+    }, { select: roleLabel(u.role) });
+  }
+  openResetPassword(u) {
+    this.openDialog({
+      type: "userpw", kicker: "PANEL USER", kickerColor: C.amber, border: "#34302a", title: "Reset Password",
+      body: "Set a new panel password for " + u.username + ". The current password is never shown. Their sessions will be ended.",
+      showTarget: true, targetLabel: "PANEL USER", target: u.username,
+      showPassword: true, passwordLabel: "New Password", passwordHint: "At least 10 characters, including a letter and a number.",
+      showConfirm: true, confirmFieldLabel: "Confirm Password",
+      confirmLabel: "Reset Password", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+      onConfirm: async () => {
+        const f = this.state.form;
+        if ((f.password || "").length < 10 || !/[A-Za-z]/.test(f.password || "") || !/[0-9]/.test(f.password || "")) { this.toast("err", "Weak password", "At least 10 chars with a letter and a number."); return; }
+        if (f.password !== f.confirm) { this.toast("err", "Passwords do not match"); return; }
+        try { await this.state.api.usersApi.resetPassword(u.id, f.password); } catch (e) { this.userErr(e); return; }
+        this.closeDialog(); await this.loadUsers();
+        this.toast("ok", "Password reset", u.username);
+        this.logActivity("reset " + u.username + "'s password");
+      },
+    }, { password: "", confirm: "" });
+  }
+  openToggleActive(u, next) {
+    this.openDialog({
+      type: "useractive", kicker: next ? "PANEL USER" : "DESTRUCTIVE", kickerColor: next ? C.green : C.warn, border: next ? "#34302a" : "#5a4520",
+      title: next ? "Enable User?" : "Disable User?",
+      body: (next ? "Re-enable panel access for " : "Disable panel access for ") + u.username + (next ? "." : ". They will be signed out and cannot log in."),
+      showTarget: true, targetLabel: "PANEL USER", target: u.username,
+      warning: next ? "" : "This user will lose access to the panel until re-enabled.",
+      confirmLabel: next ? "Enable User" : "Disable User", confirmBg: next ? "#1b2415" : "#2a2113", confirmBorder: next ? "#45632f" : "#6b5628", confirmColor: next ? "#a8cf87" : "#e8bf74",
+      onConfirm: async () => {
+        this.closeDialog();
+        try { await this.state.api.usersApi.setActive(u.id, next); } catch (e) { this.userErr(e); return; }
+        await this.loadUsers();
+        this.toast("ok", next ? "User enabled" : "User disabled", u.username);
+        this.logActivity((next ? "enabled" : "disabled") + " panel user " + u.username);
+      },
+    });
+  }
+  openDeleteUser(u) {
+    this.openDialog({
+      type: "userdel", kicker: "DESTRUCTIVE", kickerColor: C.red, border: "#4a2a22", title: "Delete Panel User?",
+      body: "Permanently remove the panel account " + u.username + ". Consider disabling instead to preserve audit history.",
+      showTarget: true, targetLabel: "PANEL USER", target: u.username + " · " + roleLabel(u.role),
+      warning: "This cannot be undone. The last active admin cannot be deleted.",
+      confirmLabel: "Delete User", confirmBg: "#26160f", confirmBorder: "#573026", confirmColor: "#e28c74",
+      onConfirm: async () => {
+        this.closeDialog();
+        try { await this.state.api.usersApi.remove(u.id); } catch (e) { this.userErr(e); return; }
+        await this.loadUsers();
+        this.toast("ok", "Panel user deleted", u.username);
+        this.logActivity("deleted panel user " + u.username);
+      },
+    });
+  }
+  logout = async () => { try { await this.state.api.authApi.logout(); } catch (_) {} window.location.reload(); };
+
+  /* --------------------------------------------------- whitelist / logs */
+  openAddWhitelistUser = () => this.openDialog({
+    type: "addwluser", kicker: "WHITELIST", kickerColor: C.amber, border: "#34302a", title: "Add Whitelist User",
+    body: "The account may connect once added.", showText: true, textLabel: "Username", textPlaceholder: "Phillip",
+    confirmLabel: "Add User", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+    onConfirm: async () => { const u = (this.state.form.text || "").trim(); this.closeDialog(); if (!u) { this.toast("err", "Username required"); return; } this.setState({ whitelist: await this.state.api.whitelistApi.addUser(u) }); this.toast("ok", "User whitelisted", u); this.logActivity("added " + u + " to the whitelist"); },
+  }, { text: "" });
+  openAddSteam = () => this.openDialog({
+    type: "addsteam", kicker: "WHITELIST", kickerColor: C.amber, border: "#34302a", title: "Add Steam ID",
+    body: "A 17-digit Steam64 ID.", showText: true, textLabel: "Steam ID", textPlaceholder: "76561198042317755",
+    confirmLabel: "Add Steam ID", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+    onConfirm: async () => { const id = (this.state.form.text || "").trim(); this.closeDialog(); if (!/^\d{17}$/.test(id)) { this.toast("err", "Invalid Steam ID", "Steam64 IDs are 17 digits."); return; } this.setState({ whitelist: await this.state.api.whitelistApi.addSteamId(id) }); this.toast("ok", "Steam ID whitelisted", id); this.logActivity("whitelisted Steam ID " + id); },
+  }, { text: "" });
+  confirmRemoveWhitelist(kind, value) {
+    this.openDialog({
+      type: "rmwl", kicker: "DESTRUCTIVE", kickerColor: C.red, border: "#4a2a22", title: kind === "user" ? "Remove From Whitelist?" : "Remove Steam ID?",
+      body: kind === "user" ? "The account will no longer be able to connect while the server is closed." : "This Steam ID will lose access to the server.",
+      showTarget: true, targetLabel: kind === "user" ? "USERNAME" : "STEAM ID", target: value,
+      confirmLabel: "Remove", confirmBg: "#26160f", confirmBorder: "#573026", confirmColor: "#e28c74",
+      onConfirm: async () => {
+        this.closeDialog();
+        const wl = kind === "user" ? await this.state.api.whitelistApi.removeUser(value) : await this.state.api.whitelistApi.removeSteamId(value);
+        this.setState({ whitelist: wl }); this.toast("ok", "Removed from whitelist", value);
+        this.logActivity("removed " + value + " from the whitelist");
+      },
+    });
+  }
+  sendCommand = async () => {
+    const cmd = this.state.consoleInput.trim();
+    if (!cmd) return;
+    const t = new Date().toTimeString().slice(0, 8);
+    this.setState((s) => ({ consoleLines: s.consoleLines.concat({ kind: "cmd", time: t, text: cmd }), consoleInput: "", history: [cmd].concat(s.history.filter((h) => h !== cmd)).slice(0, 8) }));
+    const out = await this.state.api.consoleApi.send(cmd);
+    this.setState((s) => ({ consoleLines: s.consoleLines.concat(out) }));
+    this.logActivity("ran console command", cmd);
+  };
+  onConsoleKey = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); this.sendCommand(); return; }
+    if (e.key === "ArrowUp") { e.preventDefault(); const h = this.state.history; if (h.length) { this.hIdx = Math.min((this.hIdx === undefined ? -1 : this.hIdx) + 1, h.length - 1); this.setState({ consoleInput: h[this.hIdx] }); } }
+    if (e.key === "ArrowDown") { e.preventDefault(); const h = this.state.history; if (this.hIdx > 0) { this.hIdx -= 1; this.setState({ consoleInput: h[this.hIdx] }); } else { this.hIdx = undefined; this.setState({ consoleInput: "" }); } }
+  };
+
+  /* -------------------------------------------------------- admin tools */
+  adminTool(label, desc, action, opts) {
+    const o = opts || {};
+    const run = async () => {
+      const doIt = async () => { await this.state.api.adminApi.trigger(label); this.toast("ok", label + " triggered", o.detail || "Sent to the game server"); this.logActivity("used admin tool: " + label); };
+      if (o.confirm) {
+        this.openDialog({
+          kicker: "WORLD EVENT", kickerColor: C.warn, border: "#5a4520", title: label + "?",
+          body: o.confirmBody || "This affects the live world for every connected player.",
+          warning: o.warning, confirmLabel: label, confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+          onConfirm: async () => { this.closeDialog(); await doIt(); },
+        });
+      } else await doIt();
+    };
+    const danger = !!o.danger;
+    return { label, desc, action: action, run, bg: danger ? "#26160f" : "#1c1a16", border: danger ? "#573026" : "#34302a", color: danger ? "#e28c74" : "#e9e5dd" };
+  }
+
+  /* ------------------------------------------------------------- render */
+  renderVals() {
+    const s = this.state;
+    const srvRaw = s.srv || { name: "—", subtitle: "Project Zomboid Dedicated Server", status: this.props.serverState || "offline", playersOnline: 0, maxPlayers: 0, uptimeSeconds: 0, cpuUsage: 0, memoryUsed: 0, memoryLimit: 4, version: null, ip: "—" };
+    const meta = STATUS_META[srvRaw.status] || STATUS_META.online;
+    const isOnline = srvRaw.status === "online";
+    const transitional = ["starting", "stopping", "restarting", "updating", "unreachable"].includes(srvRaw.status);
+    const online = s.players.filter((p) => p.online);
+    const memPct = Math.round((srvRaw.memoryUsed / srvRaw.memoryLimit) * 100);
+    const ago = Math.max(0, Math.round((s.now - s.updatedAt) / 1000));
+
+    const srv = {
+      name: srvRaw.name, subtitle: srvRaw.subtitle, ip: srvRaw.ip, version: srvRaw.version || "—",
+      statusLabel: meta.label, dotColor: meta.color, dotAnim: meta.pulse ? "pz-pulse 1.4s ease-in-out infinite" : "none",
+      isOnline, isOffline: srvRaw.status === "offline", notOnline: !isOnline, transitional, transitionalText: meta.text || "",
+      cpu: srvRaw.cpuUsage + "%", memText: srvRaw.memoryUsed.toFixed(1) + " / " + srvRaw.memoryLimit + " GB",
+      playerCount: (isOnline ? online.length : 0) + " / " + srvRaw.maxPlayers,
+      sourceLabel: transitional ? "AMP PROCESS" : "AMP + RCON",
+    };
+    const metrics = [
+      { label: "PLAYERS", value: srv.playerCount, pct: Math.round(((isOnline ? online.length : 0) / srvRaw.maxPlayers) * 100) + "%", color: C.amber, note: isOnline ? "slots in use" : "server offline" },
+      { label: "UPTIME", value: isOnline ? fmtUptime(srvRaw.uptimeSeconds) : "—", pct: isOnline ? "100%" : "0%", color: isOnline ? C.green : "#7a736a", note: isOnline ? "since last restart" : "not running" },
+      { label: "CPU", value: srvRaw.cpuUsage + "%", pct: srvRaw.cpuUsage + "%", color: srvRaw.cpuUsage > 80 ? C.red : C.amber, note: "of allocated cores" },
+      { label: "MEMORY", value: srvRaw.memoryUsed.toFixed(1) + " GB", pct: memPct + "%", color: memPct > 88 ? C.red : C.green, note: "of " + srvRaw.memoryLimit + " GB limit" },
+    ];
+    const maxCpu = 100;
+    const chart = {
+      cpu: s.chart.map((h) => ({ h: Math.max(3, (h.cpu / maxCpu) * 100) + "%" })),
+      mem: s.chart.map((h) => ({ h: Math.max(3, h.mem) + "%" })),
+    };
+
+    const isAdmin = !!(s.me && s.me.role === "admin");
+    const navGroups = NAV.map((g) => ({
+      label: g.label,
+      items: g.items.filter((it) => !it.adminOnly || isAdmin).map((it) => {
+        const active = s.route === it.id;
+        let badge = "", badgeColor = C.dim;
+        if (it.id === "players") badge = isOnline ? String(online.length) : "";
+        if (it.id === "mods") { const n = s.mods.filter((m) => m.updateStatus === "update_available").length; if (n) { badge = String(n); badgeColor = C.warn; } }
+        if (it.id === "settings" && Object.keys(s.dirtySettings).length) { badge = "●"; badgeColor = C.amber; }
+        if (it.id === "sandbox" && Object.keys(s.dirtySandbox).length) { badge = "●"; badgeColor = C.amber; }
+        return { label: it.label, go: this.go(it.id), current: active ? "page" : "false", bg: active ? "#221e18" : "transparent", color: active ? C.text : "#a9a29a", mark: active ? C.amber : "transparent", badge, badgeColor };
+      }),
+    }));
+
+    const playerRow = (p) => ({
+      username: p.username, accessLevel: p.accessLevel,
+      steamId: p.steamId || "— not linked —",
+      playtime: p.hoursPlayed != null ? p.hoursPlayed + "h" : "—",
+      statusText: p.online ? "Online" : "Offline", statusColor: p.online ? C.green : "#7a736a",
+      accessColor: (ACCESS_META[p.accessLevel] || ACCESS_META.Player).color,
+      accessBorder: (ACCESS_META[p.accessLevel] || ACCESS_META.Player).border,
+      initials: p.username.slice(0, 2).toUpperCase(),
+      session: p.connectedSeconds != null ? fmtSession(p.connectedSeconds) : "—", ping: p.ping != null ? p.ping + "ms" : "—",
+      open: () => this.setState({ detail: p.username, menu: null }),
+      menu: (e) => { const r = e.currentTarget.getBoundingClientRect(); this.setState({ menu: { items: this.playerMenuItems(p), top: Math.min(r.bottom + 6, window.innerHeight - 210) + "px", left: Math.max(12, r.right - 186) + "px" } }); },
+    });
+
+    const q = s.playerSearch.toLowerCase();
+    const filteredPlayers = s.players.filter((p) => (s.playerFilter === "All" || (s.playerFilter === "Online" ? p.online : !p.online)) && (!q || p.username.toLowerCase().includes(q) || (p.steamId || "").includes(q)));
+
+    const dp = s.detail ? s.players.find((p) => p.username === s.detail) : null;
+    const powerBtn = (p, name) => {
+      const on = !!s.powers[p.username + ":" + name];
+      return { label: name, run: this.togglePower(p, name), bg: on ? "#1b2415" : "#1c1a16", border: on ? "#45632f" : "#34302a", color: on ? "#a8cf87" : C.text, state: on ? "ON" : "OFF", stateColor: on ? C.green : "#57524b" };
+    };
+    const plain = (label, run, danger) => ({ label, run, bg: danger ? "#26160f" : "#1c1a16", border: danger ? "#573026" : "#34302a", color: danger ? "#e28c74" : C.text, state: "", stateColor: "transparent" });
+    const detail = dp ? {
+      open: true, username: dp.username,
+      facts: [
+        { label: "STATUS", value: dp.online ? "● Online" : "○ Offline", color: dp.online ? C.green : "#7a736a" },
+        { label: "ACCESS LEVEL", value: dp.accessLevel, color: (ACCESS_META[dp.accessLevel] || ACCESS_META.Player).color },
+        { label: "STEAM ID", value: dp.steamId || "not linked", color: C.dim },
+        { label: "SESSION", value: dp.online ? fmtSession(dp.connectedSeconds) : "—", color: C.dim },
+        { label: "CHARACTER", value: [dp.character, dp.profession].filter(Boolean).join(" · ") || "—", color: C.dim },
+        { label: "TOTAL PLAYTIME", value: dp.hoursPlayed != null ? dp.hoursPlayed + "h" : "Not reported", color: C.dim },
+      ],
+      groups: [
+        { title: "SESSION", items: [plain("Kick Player", () => this.openKick(dp)), plain("Ban Player", () => this.openBan(dp), true)] },
+        { title: "PERMISSIONS", items: [plain("Change Access Level", () => this.openAccess(dp))] },
+        { title: "CHARACTER", items: [plain("Give Item", () => this.openGive(dp, "item")), plain("Give XP", () => this.openGive(dp, "xp"))] },
+        { title: "ADMIN POWERS", items: [powerBtn(dp, "God Mode"), powerBtn(dp, "Invisible"), powerBtn(dp, "No Clip")] },
+        { title: "WORLD", items: [plain("Spawn Vehicle", () => this.openSpawnVehicle(dp)), plain("Safehouse Management", () => this.toast("info", "Safehouse management", "Opens once the backend exposes safehouse data."))] },
+      ],
+    } : { open: false, facts: [], groups: [] };
+
+    const settingsSections = s.settings.map((sec, si) => ({
+      title: sec.title.toUpperCase(),
+      fields: sec.fields.map((f, fi) => this.decorate(f, "set-" + si + "-" + fi, this.editSetting(si, fi), !!s.dirtySettings[si + ":" + fi])),
+    }));
+    const sq = s.sandboxSearch.trim().toLowerCase();
+    let sandboxSections = [];
+    if (sq) {
+      s.sandbox.forEach((c, ci) => c.sections.forEach((sec, si) => {
+        const fields = sec.fields.map((f, fi) => ({ f, fi })).filter(({ f }) => f.label.toLowerCase().includes(sq) || (f.desc || "").toLowerCase().includes(sq) || f.key.toLowerCase().includes(sq));
+        if (fields.length) sandboxSections.push({ title: sec.title.toUpperCase(), cat: c.name.toUpperCase(), fields: fields.map(({ f, fi }) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[ci + ":" + si + ":" + fi])) });
+      }));
+    } else {
+      const ci = Math.max(0, s.sandbox.findIndex((c) => c.name === s.sandboxCat));
+      const cat = s.sandbox[ci];
+      if (cat) sandboxSections = cat.sections.map((sec, si) => ({ title: sec.title.toUpperCase(), cat: cat.name.toUpperCase(), fields: sec.fields.map((f, fi) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[ci + ":" + si + ":" + fi])) }));
+    }
+
+    const mq = s.modSearch.toLowerCase();
+    const modRows = s.mods.map((m) => {
+      const modIds = m.modIds || [];
+      const displayName = m.name || modIds[0] || m.workshopId || "—";
+      const modIdsText = modIds.length ? modIds.join(", ") : (m.modIdsResolved === false ? "not downloaded" : "—");
+      const workshopIdText = m.workshopId || "— local —";
+      return { m, displayName, modIdsText, workshopIdText, hay: (displayName + " " + workshopIdText + " " + modIdsText).toLowerCase() };
+    }).filter((r) => !mq || r.hay.includes(mq)).map(({ m, displayName, modIdsText, workshopIdText }) => {
+      const st = { updated: { icon: "✓", text: "Updated", color: C.green }, update_available: { icon: "⚠", text: "Update available", color: C.warn }, unknown: { icon: "?", text: "Unknown", color: "#7a736a" } }[m.updateStatus];
+      const isWs = m.workshopId != null;
+      const noop = () => {};
+      return {
+        ...m, displayName, modIdsText, workshopIdText,
+        statusIcon: st.icon, statusText: st.text, statusColor: st.color,
+        nameColor: m.enabled ? C.text : "#7a736a",
+        enabledLabel: m.enabled ? "ON" : "OFF",
+        enabledBg: m.enabled ? "#1b2415" : "#1a1814", enabledBorder: m.enabled ? "#45632f" : "#34302a", enabledColor: m.enabled ? "#a8cf87" : "#7a736a",
+        toggle: isWs ? this.modAction(this.state.api.modsApi.toggle, m.workshopId) : noop,
+        up: isWs ? this.modAction(this.state.api.modsApi.move, m.workshopId, -1) : noop,
+        down: isWs ? this.modAction(this.state.api.modsApi.move, m.workshopId, 1) : noop,
+        remove: () => this.removeMod(m),
+      };
+    });
+
+    const lq = s.logSearch.toLowerCase();
+    const logRows = s.logs.filter((l) => (s.logFilter === "All" || l.level === s.logFilter.toLowerCase()) && (!lq || l.text.toLowerCase().includes(lq))).map((l, i) => ({
+      time: l.time, level: l.level.toUpperCase(), text: l.text,
+      color: { info: "#8a938a", warning: C.warn, error: C.red }[l.level] || C.dim,
+      copy: () => { const line = l.time + " " + l.level.toUpperCase() + " " + l.text; if (navigator.clipboard) navigator.clipboard.writeText(line); this.toast("ok", "Log line copied"); },
+    }));
+
+    const consoleRows = s.consoleLines.map((c) => ({
+      time: c.time, text: c.text,
+      mark: c.kind === "cmd" ? "$" : c.kind === "err" ? "!" : ">",
+      markColor: c.kind === "cmd" ? C.amber : c.kind === "err" ? C.red : "#3f3a34",
+      color: c.kind === "cmd" ? "#e8bf74" : c.kind === "err" ? "#e28c74" : "#b9b2a8",
+    }));
+
+    const adminGroups = [
+      { title: "WORLD EVENTS", tools: [
+        this.adminTool("Trigger Helicopter", "Flies the event helicopter over the map, attracting zombies.", "Trigger", { confirm: true, warning: "Zombies across the map will be drawn toward players." }),
+        this.adminTool("Trigger Gunshot", "Plays a distant gunshot as a meta event.", "Trigger"),
+        this.adminTool("Trigger Lightning", "Cosmetic lightning strike.", "Trigger"),
+        this.adminTool("Sound Alarm", "Sets off a house alarm at a random building.", "Trigger"),
+      ]},
+      { title: "ZOMBIES", tools: [
+        this.adminTool("Create Horde", "Spawns a horde near a chosen player.", "Spawn", { confirm: true, warning: "This can kill unprepared players." }),
+        this.adminTool("Remove Zombies", "Clears all zombies currently loaded in memory.", "Remove", { danger: true, confirm: true, confirmBody: "All loaded zombies will be deleted. Population regenerates over time.", warning: "Irreversible for the current world state." }),
+      ]},
+      { title: "SERVER", tools: [
+        { label: "Save World", desc: "Force an immediate world save.", action: "Save", run: this.saveWorld, bg: "#1c1a16", border: "#34302a", color: C.text },
+        { label: "Reload Server Options", desc: "Re-read the server config without a restart.", action: "Reload", run: async () => { await this.state.api.adminApi.trigger("reloadoptions"); this.toast("ok", "Server options reloaded"); this.logActivity("reloaded server options"); }, bg: "#1c1a16", border: "#34302a", color: C.text },
+        { label: "Check Mod Updates", desc: "Ask Steam whether Workshop items changed.", action: "Check", run: this.checkMods, bg: "#1c1a16", border: "#34302a", color: C.text },
+      ]},
+    ];
+
+    const days = [];
+    s.activity.forEach((a) => { let d = days.find((x) => x.day === a.day); if (!d) { d = { day: a.day.toUpperCase(), items: [] }; days.push(d); } d.items.push({ at: a.at, actor: a.actor, text: a.text, detail: a.detail || "" }); });
+
+    const d = s.dialog;
+    const dlg = d ? {
+      open: true, ...d,
+      kickerColor: d.kickerColor,
+      showTarget: !!d.showTarget, showText: !!d.showText, showSelect: !!d.showSelect, showCheck: !!d.showCheck, showRadio: !!d.showRadio, showWarning: !!d.warning,
+      showPassword: !!d.showPassword, showConfirm: !!d.showConfirm, passwordHint: d.passwordHint || "", passwordLabel: d.passwordLabel || "Password", confirmFieldLabel: d.confirmFieldLabel || "Confirm Password",
+      selectOptions: d.selectOptions || [], warning: d.warning || "",
+      radioOptions: (d.radioValues || []).map((v) => {
+        const on = s.form.radio === v;
+        return { label: v, on, pick: () => this.setState((st) => ({ form: { ...st.form, radio: v } })), bg: on ? "#221e18" : "#12110e", border: on ? "#6b5628" : "#34302a", color: on ? C.text : "#a9a29a", dotBorder: on ? C.amber : "#3f3a34", dotBg: on ? C.amber : "transparent" };
+      }),
+      confirm: d.onConfirm,
+    } : { open: false, radioOptions: [], selectOptions: [] };
+
+    const dirtyCount = Object.keys(s.dirtySettings).length;
+    const sbDirtyCount = Object.keys(s.dirtySandbox).length;
+
+    return {
+      state: { loading: s.loading && !s.error, error: !!s.error },
+      ready: !s.loading && !s.error,
+      srv, metrics, chart, navGroups, page: Object.fromEntries(Object.keys(TITLES).map((k) => [k, s.route === k])),
+      pageTitle: TITLES[s.route], lastUpdated: ago < 2 ? "just now" : ago + "s ago",
+      onlinePlayers: isOnline ? online.map(playerRow) : [],
+      onlineEmpty: !isOnline || online.length === 0,
+      onlineEmptyText: isOnline ? "No players are currently online." : "Server is offline — player information is unavailable until it starts.",
+      playerRows: filteredPlayers.map(playerRow),
+      playersEmpty: !s.loading && filteredPlayers.length === 0,
+      playerFilters: ["All", "Online", "Offline"].map((f) => ({ label: f, go: () => this.setState({ playerFilter: f }), bg: s.playerFilter === f ? "#221e18" : "#161410", color: s.playerFilter === f ? C.amber : "#a9a29a" })),
+      whitelistUsers: s.whitelist.users.map((u) => ({ name: u, remove: () => this.confirmRemoveWhitelist("user", u) })),
+      whitelistIds: s.whitelist.steamIds.map((u) => ({ name: u, remove: () => this.confirmRemoveWhitelist("steam", u) })),
+      whitelistUsersEmpty: s.whitelist.users.length === 0, whitelistIdsEmpty: s.whitelist.steamIds.length === 0,
+      settingsSections, settingsDirty: { text: dirtyCount ? dirtyCount + " unsaved change(s)" : "No unsaved changes", color: dirtyCount ? C.amber : "#57524b" },
+      sandboxSections, sandboxEmpty: sq && sandboxSections.length === 0,
+      sandboxDirty: { text: sbDirtyCount ? sbDirtyCount + " unsaved" : "No unsaved changes", color: sbDirtyCount ? C.amber : "#57524b" },
+      sandboxCats: s.sandbox.map((c) => ({ name: c.name, count: c.sections.reduce((n, x) => n + x.fields.length, 0), go: () => this.setState({ sandboxCat: c.name, sandboxSearch: "" }), bg: !sq && s.sandboxCat === c.name ? "#221e18" : "transparent", color: !sq && s.sandboxCat === c.name ? C.amber : "#a9a29a" })),
+      modRows, modsEmpty: modRows.length === 0,
+      modSummary: s.mods.length + " installed · " + s.mods.filter((m) => m.enabled).length + " enabled",
+      logRows, logsEmpty: logRows.length === 0, logCount: logRows.length + " LINE(S)",
+      logFilters: ["All", "Info", "Warning", "Error"].map((f) => ({ label: f, go: () => this.setState({ logFilter: f }), bg: s.logFilter === f ? "#221e18" : "#161410", color: s.logFilter === f ? C.amber : "#a9a29a" })),
+      logCtl: {
+        pauseLabel: s.paused ? "Resume Live" : "Pause Live", pauseBg: s.paused ? "#2a2113" : "#1c1a16", pauseColor: s.paused ? "#e8bf74" : "#cfc9c0",
+        scrollLabel: s.autoscroll ? "Auto-scroll On" : "Auto-scroll Off", scrollBg: s.autoscroll ? "#221e18" : "#1c1a16", scrollColor: s.autoscroll ? C.amber : "#cfc9c0",
+      },
+      consoleRows, historyRows: s.history.map((h) => ({ text: h, use: () => this.setState({ consoleInput: h }) })), historyEmpty: s.history.length === 0,
+      adminGroups, activityDays: days, activityPreview: s.activity.slice(0, 4),
+      account: s.me ? { username: s.me.username, roleLabel: roleLabel(s.me.role), roleColor: (ROLE_COLORS[s.me.role] || {}).color || C.dim, initials: (s.me.username || "?").slice(0, 2).toUpperCase() } : null,
+      userRows: s.panelUsers.map((u) => ({
+        username: u.username, roleLabel: roleLabel(u.role),
+        roleColor: (ROLE_COLORS[u.role] || ROLE_COLORS.readonly).color, roleBorder: (ROLE_COLORS[u.role] || ROLE_COLORS.readonly).border,
+        statusText: u.active ? "Active" : "Disabled", statusColor: u.active ? C.green : "#c4553f",
+        lastLogin: u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "Never",
+        selfTag: s.me && s.me.id === u.id ? " (you)" : "",
+        menu: (e) => this.openUserMenu(u, e),
+      })),
+      usersEmpty: s.panelUsers.length === 0, isAdmin,
+      detail, dlg, toasts: s.toasts,
+      menu: s.menu ? { open: true, ...s.menu, items: s.menu.items.map((i) => ({ label: i.label, color: i.color || C.text, run: i.run })) } : { open: false, items: [] },
+      refs: { logs: this.logsRef, console: this.consoleRef },
+      form: {
+        broadcast: s.broadcast, onBroadcast: (e) => this.setState({ broadcast: e.target.value }),
+        playerSearch: s.playerSearch, onPlayerSearch: (e) => this.setState({ playerSearch: e.target.value }),
+        sandboxSearch: s.sandboxSearch, onSandboxSearch: (e) => this.setState({ sandboxSearch: e.target.value }),
+        modSearch: s.modSearch, onModSearch: (e) => this.setState({ modSearch: e.target.value }),
+        logSearch: s.logSearch, onLogSearch: (e) => this.setState({ logSearch: e.target.value }),
+        consoleInput: s.consoleInput, onConsoleInput: (e) => this.setState({ consoleInput: e.target.value }), onConsoleKey: this.onConsoleKey,
+        text: s.form.text === undefined ? "" : s.form.text, onText: this.setField("text"),
+        password: s.form.password === undefined ? "" : s.form.password, onPassword: this.setField("password"),
+        confirm: s.form.confirm === undefined ? "" : s.form.confirm, onConfirm: this.setField("confirm"),
+        select: s.form.select === undefined ? "" : s.form.select, onSelect: this.setField("select"),
+        check: !!s.form.check, onCheck: () => this.setState((st) => ({ form: { ...st.form, check: !st.form.check } })),
+        checkMark: s.form.check ? "✓" : "", checkBg: s.form.check ? C.amber : "transparent", checkBorder: s.form.check ? C.amber : "#3f3a34",
+      },
+      actions: {
+        save: this.saveWorld, start: async () => { await this.state.api.serverApi.start(); this.toast("info", "Starting server", "Waiting for Project Zomboid to come up."); this.logActivity("started the server"); },
+        openStop: this.openStop, openRestart: this.openRestart, openBroadcast: this.openBroadcast,
+        sendBroadcast: () => this.broadcast(), retry: () => this.load(),
+        goPlayers: this.go("players"), goActivity: this.go("activity"),
+        openAddWhitelistUser: this.openAddWhitelistUser, openAddSteam: this.openAddSteam,
+        saveSettings: this.saveSettings, discardSettings: this.discardSettings,
+        saveSandbox: this.saveSandbox, discardSandbox: this.discardSandbox,
+        openAddMod: this.openAddMod, checkMods: this.checkMods, updateMods: this.updateMods,
+        openAddUser: this.openAddUser, logout: this.logout,
+        togglePause: () => { this.setState((st) => ({ paused: !st.paused })); },
+        toggleAutoscroll: () => this.setState((st) => ({ autoscroll: !st.autoscroll })),
+        clearLogs: () => { this.setState({ logs: [] }); this.toast("info", "Log view cleared", "Server-side logs are untouched."); },
+        sendCommand: this.sendCommand,
+        closeDialog: this.closeDialog, closeMenu: () => this.setState({ menu: null }), closeDetail: () => this.setState({ detail: null }),
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>

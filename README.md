@@ -1,0 +1,516 @@
+# ZPanel — Project Zomboid Server Control Panel
+
+ZPanel is a self-hosted web administration panel for **Project Zomboid dedicated
+servers**. It gives operators a browser dashboard for a live PZ server — status,
+players, moderation, configuration, mods, logs, and an audited console — backed
+by a hardened Fastify/TypeScript API that talks to the real server through RCON,
+the Project Zomboid filesystem/database, and a pluggable server-runtime adapter
+(systemd, AMP, or none).
+
+> **Engineering / AI-agent rules live in [AGENTS.md](AGENTS.md).** Read it fully
+> before modifying this project. This README is for operators, installers, and
+> contributors getting oriented.
+
+---
+
+## Features
+
+Everything listed here is implemented and served by real data sources — the
+panel never fabricates game state.
+
+- **Dashboard** — server status, player count, CPU / memory / uptime metrics
+  with a bounded history chart, and the public game address derived from the
+  server's own configuration.
+- **Players** — online player list, per-player detail, kick, ban/unban,
+  access-level changes, powers (godmode, invisible, noclip), give item / XP /
+  vehicle (admin tools with confirmation semantics).
+- **Whitelist** — Project Zomboid account whitelist and allowed Steam IDs.
+  Reads come from the PZ account database (the authoritative source); mutations
+  go through official RCON commands and are then **confirmed** against that
+  database rather than trusted blindly.
+- **Server settings** — schema-driven editor for `<servername>.ini` with
+  validation, secret masking, patch semantics (unknown keys preserved), backup +
+  atomic writes, and live `changeoption`/`reloadoptions` for runtime-safe keys.
+- **Sandbox** — `<servername>_SandboxVars.lua` editor with the same
+  backup/atomic-write discipline.
+- **Mods / Steam Workshop** — manage `WorkshopItems=` and `Mods=` with a correct
+  one-to-many Workshop-ID → Mod-ID model, mod.info discovery from downloaded
+  Workshop content, load-order moves, enable/disable, and update checks.
+- **Logs** — live tail of the PZ `DebugLog-server` files streamed to the browser
+  over Server-Sent Events, with level parsing.
+- **Console** — RCON game console for admins, restricted to an explicit
+  command allowlist (never a shell).
+- **Admin tools** — one-click actions (helicopter, gunshot, horde, weather, …)
+  from a fixed server-side registry; the browser can only send an action id.
+- **Server lifecycle** — start / stop / restart (and update where the runtime
+  supports it), including scheduled restarts with in-game warning broadcasts.
+- **Panel users & roles** — `admin` / `moderator` / `readonly` web accounts with
+  Argon2id password hashing, session invalidation, and last-admin protection.
+  These are **panel accounts, not game accounts** (see below).
+- **Activity / audit** — every mutating action is recorded (actor, action,
+  target, outcome, source IP) and shown in the panel. Audit entries never
+  contain passwords or hashes.
+- **System health** — `/health` endpoint plus an admin-only integration report
+  (RCON reachability, runtime capabilities, file access).
+
+## Architecture
+
+Current recommended standalone deployment:
+
+```
+Browser
+   │  HTTPS
+   ▼
+Caddy (TLS, static frontend, reverse proxy)
+   │  http://127.0.0.1:8095  (/api, /health)
+   ▼
+ZPanel backend (Fastify + TypeScript, non-root)
+ ├── Panel database (SQLite: users, sessions, audit, scheduled ops)
+ ├── RCON client (127.0.0.1 only)
+ ├── PZ filesystem  (<name>.ini, <name>_SandboxVars.lua, Logs/, Workshop content)
+ ├── PZ database    (read-only: whitelist, accounts)
+ └── ServerRuntimeAdapter
+      └── SystemdRuntimeAdapter ── sudo systemctl {start|stop|restart} <fixed unit>
+           └── Project Zomboid dedicated server (non-root systemd service)
+```
+
+The browser never touches RCON, the filesystem, or a shell — every action goes
+through the backend, which authenticates, authorizes, validates, executes, and
+audits it.
+
+**Runtime adapters.** Lifecycle and metrics go through a `ServerRuntimeAdapter`
+abstraction selected by the `PZ_RUNTIME` environment variable:
+
+```
+ServerRuntimeAdapter
+├── systemd     — recommended: controls a fixed systemd unit, metrics via /proc
+├── amp         — optional: CubeCoders AMP owns lifecycle/metrics/updates
+└── standalone  — metrics-only via /proc; lifecycle managed outside the panel
+```
+
+AMP is **supported but never required**. The rest of the backend depends only on
+the adapter interface.
+
+## Technology stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Node.js ≥ 20, TypeScript (strict), Fastify 5 |
+| Validation | Zod |
+| Panel DB | SQLite via better-sqlite3 (WAL) |
+| Passwords | Argon2id |
+| Game integration | Source RCON protocol, PZ config files, PZ SQLite DB (read-only) |
+| Frontend | Static HTML/JS (compiled template + `api.js` adapter), no build step |
+| Process management | systemd |
+| Reverse proxy | Caddy (any TLS-terminating proxy works) |
+| Tests | Vitest |
+
+Target OS: Linux with systemd (developed and operated on Ubuntu Server). Other
+distros should work; only the systemd runtime and the deployment scripts assume
+systemd.
+
+## Project Zomboid compatibility
+
+- **Tested against: Project Zomboid Build 42.20.2** (dedicated server, Steam
+  appid 380870, public branch) — the version the reference deployment runs.
+- RCON command surfaces and log formats were captured from a live Build 42
+  server. Build 41 servers may largely work (the config file model is the same)
+  but are **not tested** — treat 42.x as the supported line.
+- This is a "tested version" statement, not a minimum or a guarantee for future
+  builds: PZ updates occasionally change RCON output and config semantics.
+
+## Installation overview
+
+Prerequisites on a fresh Linux server:
+
+- Linux with systemd (Ubuntu 22.04/24.04 tested)
+- Node.js ≥ 20
+- SteamCMD
+- Project Zomboid Dedicated Server (Steam appid `380870`)
+- A reverse proxy (Caddy recommended) and optionally a domain + HTTPS
+- Two dedicated non-root system users (e.g. `pzserver` for the game, `zpanel`
+  for the panel)
+
+Recommended directory layout (the reference deployment):
+
+```
+/srv/project-zomboid/
+├── server/      # PZ dedicated server install (SteamCMD target)
+├── data/        # Zomboid data root (Server/, Logs/, db/, Saves/) — HOME of pzserver
+└── steamcmd/    # SteamCMD install
+
+/srv/zpanel/
+├── backend/     # built backend (dist/ + node_modules + .env)
+└── public/      # static frontend (index.html, api.js, support.js)
+```
+
+High-level steps:
+
+1. **Install the PZ server** with SteamCMD as the `pzserver` user; run it once
+   to generate `<servername>.ini`, `<servername>_SandboxVars.lua`, and
+   `db/<servername>.db` under the data root.
+2. **Create the PZ systemd unit** (see [systemd service](#the-project-zomboid-systemd-service))
+   running the official `start-server.sh -servername <name>` as `pzserver`, with
+   a graceful `ExecStop` that saves via RCON before quitting.
+3. **Build and deploy the backend**: `npm ci && npm run build` in `backend/`,
+   copy to `/srv/zpanel/backend`, create `.env` from `backend/.env.example`.
+4. **Deploy the frontend**: copy `Zomboid_Server_Control.dc.html` to
+   `/srv/zpanel/public/index.html` together with `api.js` and `support.js`.
+5. **Create the panel systemd unit** (`pz-panel.service`) running
+   `node dist/src/server.js` as `zpanel`, bound to `127.0.0.1`.
+6. **Grant least privilege**: a sudoers rule allowing `zpanel` to run exactly
+   `systemctl start|stop|restart <your-pz-unit>` and nothing else; filesystem
+   ACLs giving `zpanel` read/write on the two config files and read on
+   `Logs/` + `db/`.
+7. **Front with Caddy**: serve `public/` statically, reverse-proxy `/api` and
+   `/health` to `127.0.0.1:8095`, disable buffering for `/api/logs/stream`
+   (SSE), and set `Cache-Control: no-store` on `/api/*`.
+8. **Bootstrap the first admin**: `npm run seed:admin -- <username> <password>`
+   (Argon2id-hashed; choose a strong unique password and store it in your
+   password manager — the panel never displays it again).
+9. **Lock down RCON**: bind/firewall it so it is reachable from localhost only.
+
+## Configuration
+
+All backend configuration is environment-based (a `.env` file next to the
+backend is read at startup; real environment variables win). See
+[`backend/.env.example`](backend/.env.example) for a complete annotated
+template. **Never commit a real `.env`.**
+
+| Variable | Required | Purpose | Example |
+|---|---|---|---|
+| `NODE_ENV` | no (default `development`) | `production` enforces `SESSION_SECRET` | `production` |
+| `HOST` | no (default `127.0.0.1`) | Backend bind address — keep local behind the proxy | `127.0.0.1` |
+| `PORT` | no (default `8095`) | Backend port | `8095` |
+| `PANEL_ORIGINS` | yes in practice | Comma-separated allowed browser origins (CORS + CSRF origin check) | `https://panel.example.com` |
+| `COOKIE_SECURE` | no (default `false`) | `true` when the panel is served over HTTPS | `true` |
+| `SESSION_SECRET` | **yes in production** | 32+ byte random string signing session cookies | `<strong-secret>` |
+| `PZ_RUNTIME` | no (default `amp`) | Runtime adapter: `systemd`, `amp`, or `standalone` | `systemd` |
+| `SYSTEMD_UNIT` | with `systemd` runtime | Fixed PZ unit the panel controls — never request-derived | `project-zomboid-zpanel.service` |
+| `PZ_SERVER_NAME` | yes | PZ config-set name (`<name>.ini`, `db/<name>.db`) | `myserver` |
+| `PZ_SERVER_DIR` | yes | Directory containing `<name>.ini` / `<name>_SandboxVars.lua` | `/srv/project-zomboid/data/Zomboid/Server` |
+| `PZ_ZOMBOID_DIR` | no (derived) | Zomboid data root (parent of `Server/`, `Logs/`, `db/`) | `/srv/project-zomboid/data/Zomboid` |
+| `PZ_WORKSHOP_DIR` | no (derived) | Steam Workshop content dir (`.../workshop/content/108600`) when separate from the data root | `/srv/project-zomboid/server/steamapps/workshop/content/108600` |
+| `PZ_RCON_HOST` | no (default `127.0.0.1`) | RCON host — keep local | `127.0.0.1` |
+| `PZ_RCON_PORT` | no (default `27015`) | RCON TCP port (`RCONPort` in the ini) | `27115` |
+| `PZ_RCON_PASSWORD` | yes in practice | RCON password (`RCONPassword` in the ini) | `<strong-secret>` |
+| `PANEL_DB_PATH` | no (default `./data/panel.db`) | Panel SQLite location | `/var/lib/zpanel/panel.db` |
+| `METRICS_SAMPLE_MS` | no (default `5000`) | Metrics sampling interval | `5000` |
+| `METRICS_HISTORY_POINTS` | no (default `120`) | In-memory history buffer size | `120` |
+| `FRONTEND_DIR` | no | If set, the backend serves the static frontend itself (single-host setups without a proxy serving statics) | `/srv/zpanel/public` |
+| `AMP_BASE_URL` | amp runtime only | AMP instance web API | `http://127.0.0.1:8083` |
+| `AMP_USERNAME` / `AMP_PASSWORD` | amp runtime only | AMP API credentials | `<strong-secret>` |
+| `AMP_INSTANCE_NAME` / `AMP_INSTANCE_ID` | amp runtime only | Target AMP instance | `MyInstance01` |
+| `AMP_SYSTEM_USER` | amp CLI fallback | System user owning AMP for `ampinstmgr` fallback | `amp` |
+| `AMP_ALLOW_CLI` | no (default `true`) | Allow the `ampinstmgr` CLI fallback | `true` |
+
+Secrets (`SESSION_SECRET`, `PZ_RCON_PASSWORD`, AMP credentials) must only ever
+live in the deployed `.env` (mode `0600`) — never in Git, docs, or logs.
+
+## Runtime modes
+
+### `systemd` (recommended)
+
+The panel controls one **fixed** systemd unit (`SYSTEMD_UNIT`) through a scoped
+sudoers rule. Capabilities: lifecycle ✔, metrics ✔ (via `/proc`), update ✘,
+durable server settings ✔. Start/stop/restart run
+`sudo systemctl <verb> <unit>` with a hard-coded verb allowlist — the unit name
+and verbs are server configuration, never request input. Status comes from
+`systemctl is-active`; CPU/memory/uptime come from `/proc` sampling of the PZ
+process (matched by server name, never "any Java process").
+
+### `amp` (optional)
+
+For servers managed by CubeCoders AMP. Capabilities: lifecycle ✔, metrics ✔,
+update ✔, durable server settings ✘ — AMP regenerates `<name>.ini` from its own
+settings store on restart, so the panel reports ini writes as non-durable in
+this mode. Uses the AMP HTTP API when credentials are configured, with an
+optional `ampinstmgr` CLI fallback. **AMP is not required to run ZPanel.**
+
+### `standalone`
+
+For servers started by anything else (docker, a shell script, by hand).
+Capabilities: lifecycle ✘ (start/stop/restart fail honestly with
+`NOT_SUPPORTED`), metrics ✔ via `/proc`, durable server settings ✔. Everything
+that works over RCON and files (players, whitelist, settings, mods, logs,
+console) works normally.
+
+## The Project Zomboid systemd service
+
+The reference unit (`project-zomboid-zpanel.service`) runs the official
+launcher as a dedicated non-root user:
+
+```ini
+[Service]
+User=pzserver
+WorkingDirectory=/srv/project-zomboid/server
+Environment=HOME=/srv/project-zomboid/data
+ExecStart=/srv/project-zomboid/server/start-server.sh -servername <name>
+ExecStop=<graceful stop script: RCON save + quit>
+TimeoutStopSec=90
+```
+
+Operator commands:
+
+```bash
+sudo systemctl status  project-zomboid-zpanel
+sudo systemctl start   project-zomboid-zpanel
+sudo systemctl stop    project-zomboid-zpanel
+sudo systemctl restart project-zomboid-zpanel
+journalctl -u project-zomboid-zpanel -e
+```
+
+**Graceful shutdown** is the only supported stop path: `ExecStop` issues an RCON
+`save` then `quit`, and systemd waits (`TimeoutStopSec`) for the JVM to exit on
+its own. Do not `kill -9` the server as a routine procedure — that risks world
+corruption.
+
+## The ZPanel service
+
+`pz-panel.service` runs the web backend only, as the unprivileged `zpanel` user,
+bound to `127.0.0.1:8095`:
+
+```bash
+sudo systemctl status  pz-panel
+sudo systemctl restart pz-panel
+journalctl -u pz-panel -e
+```
+
+Restarting the panel **never** restarts Project Zomboid — they are independent
+services. The backend force-closes lingering SSE log-stream connections on
+shutdown and has a bounded shutdown grace period, so a normal
+`systemctl restart pz-panel` completes cleanly.
+
+## First login & panel users
+
+Panel authentication is completely separate from the game:
+
+| | Panel users (**Users & Access**) | PZ players (**Whitelist**) |
+|---|---|---|
+| Purpose | Log in to this web panel | Connect to the game server |
+| Stored in | Panel SQLite DB (Argon2id hashes) | PZ's own `db/<name>.db` |
+| Managed via | `/api/users` (admin only) | `/api/whitelist` (RCON + PZ DB) |
+
+They are **never** mixed: creating a panel user does not whitelist anyone, and
+whitelisting a player creates no panel account.
+
+Bootstrap the first admin on the server (never through an unauthenticated
+endpoint):
+
+```bash
+cd /srv/zpanel/backend
+npm run seed:admin -- <username> '<strong-password>'
+```
+
+Roles (checked server-side on every request; hiding a button is never the
+security boundary):
+
+| Role | Can |
+|---|---|
+| `admin` | Everything: lifecycle, settings, sandbox, mods, whitelist mutations, player powers/items/XP, console, Users & Access, system health |
+| `moderator` | Day-to-day moderation: kick/ban, save, broadcast, admin quick-actions, mod update checks — no settings writes, no console, no user management |
+| `readonly` | View everything non-secret; no mutations |
+
+Additional protections: session cookies are signed and `HttpOnly`; role changes,
+password resets, and disables immediately invalidate the target's sessions; the
+last active admin cannot be demoted, disabled, or deleted; login attempts are
+rate-limited per IP.
+
+## Mods: Workshop IDs vs Mod IDs
+
+Project Zomboid uses **two different identifier spaces**, and the config stores
+them as two flat lists with no recorded relationship:
+
+- `WorkshopItems=` — numeric **Steam Workshop IDs**: what SteamCMD downloads.
+- `Mods=` — textual **Mod IDs** (from each mod's `mod.info`): what the game
+  actually loads, in order.
+
+**They are not interchangeable, and one Workshop item can contain several Mod
+IDs** (e.g. a library + addon in one Workshop upload). Positional pairing of the
+two lists is meaningless and ZPanel never uses it.
+
+ZPanel's add-mod workflow:
+
+1. Enter a Workshop ID → the backend looks it up.
+2. If the Workshop content is already on disk, the real Mod IDs are
+   **discovered from `mod.info`** (the authoritative source).
+3. Otherwise you select/enter the Mod IDs explicitly; the panel records the
+   association you asserted so it can group/display/remove correctly later.
+4. The backend validates every ID and writes both lists with backup + atomic
+   write, preserving unrelated ini content.
+
+Mod IDs are validated (letters, digits, `_`, `.`, `-` only) and Workshop IDs
+must be 6–12 digit numbers — semicolons, newlines, paths, and shell metacharacters
+are rejected outright, since these values are written into the server's config.
+
+## Settings & SandboxVars
+
+- Server settings live in `<servername>.ini`; sandbox rules in
+  `<servername>_SandboxVars.lua`. **These PZ files remain the source of truth**
+  — ZPanel edits them in place rather than keeping a shadow copy.
+- Every mutation follows the same discipline: **backup first** (panel-owned
+  `.zpanel-backups/` directory, last 10 versions per file), then **atomic
+  write** (temp file + fsync + rename), patching only the keys you changed.
+- Secret ini values (e.g. `RCONPassword`) are never returned to the browser —
+  only a "configured" flag.
+- Runtime-safe ini keys are additionally applied live via RCON
+  `changeoption`/`reloadoptions`; others take effect on the next restart, and
+  the UI says so.
+- With the `systemd`/`standalone` runtimes there is no external settings
+  overlay: what's in the files is what runs. (Under AMP, AMP's own settings
+  store regenerates the ini on restart — the panel surfaces this honestly via
+  the `durableServerSettings` capability.)
+
+## Ports
+
+| Port | Protocol | Purpose | Exposure |
+|---|---|---|---|
+| Game port (`DefaultPort`) | UDP | Player connections (Steam) | Public |
+| Direct/secondary port (`UDPPort`) | UDP | Second game channel | Public |
+| RCON (`RCONPort`) | TCP | Remote console used by ZPanel | **LOCAL/PRIVATE ONLY** |
+| HTTPS | TCP 443 | The panel, via reverse proxy | Public (authenticated) |
+| Panel backend (`PORT`) | TCP | Fastify behind the proxy | Localhost only |
+
+Example (the reference deployment): game `16361/udp`, direct `16362/udp`, RCON
+`127.0.0.1:27115`, panel backend `127.0.0.1:8095` behind Caddy on 443.
+
+**Never expose RCON publicly.** The RCON protocol is plaintext and the password
+rides on it. Bind it locally and/or firewall the port so only localhost may
+connect (the reference deployment adds an explicit iptables DROP for external
+RCON traffic, kept persistent by a small systemd oneshot unit).
+
+## Security model
+
+- **Non-root everywhere**: the panel runs as `zpanel`, the game as `pzserver`.
+  Neither ever runs as root.
+- **RCON local-only**, password kept in the deployed `.env` (0600).
+- **Sessions**: signed HttpOnly cookies; `Secure` under HTTPS; server-side
+  session store with idle/absolute expiry and explicit invalidation.
+- **CSRF**: state-changing requests require the `x-csrf-token` header bound to
+  the session, plus an Origin/Referer allowlist check (`PANEL_ORIGINS`).
+- **Passwords**: Argon2id; hashes never leave the backend; audit rows never
+  contain password material.
+- **Authorization is server-side**: every route declares its minimum role;
+  frontend hiding is cosmetic, never the boundary.
+- **Console ≠ shell**: the admin console submits to the PZ game console over
+  RCON through a strict command allowlist; there is no shell execution path
+  reachable from the browser.
+- **Fixed systemd surface**: one unit name from config, three verbs, argv-based
+  spawn (no shell interpolation), mirrored by an equally narrow sudoers rule.
+- **No request-derived paths**: every file the backend touches is derived from
+  server-side configuration, never from URL/body input.
+- **Least-privilege filesystem**: ACLs give the panel rw on exactly the two
+  config files it edits and read-only access to logs/DB/workshop content.
+- **Secrets excluded from Git** (see `.gitignore`); rate limiting globally and
+  stricter on login; consistent error model that never leaks stack traces.
+
+## Backups
+
+ZPanel automatically backs up **configuration files it is about to modify**
+(`<name>.ini`, `<name>_SandboxVars.lua`) into a panel-owned
+`.zpanel-backups/` directory next to them, keeping the last 10 copies per file.
+Writes are atomic, so a crash mid-write never leaves a truncated config.
+
+**This is config backup only.** ZPanel does **not** back up world saves, the PZ
+database, or player data — operate your own scheduled backups (e.g. of the
+Zomboid data root) for disaster recovery.
+
+## Development
+
+```bash
+cd backend
+npm install        # or: npm ci
+npm run dev        # tsx watch (auto-reload) on src/server.ts
+npm run lint       # eslint over src/ and test/
+npm run typecheck  # tsc --noEmit
+npm test           # vitest run
+npm run build      # tsc -> dist/
+npm start          # node dist/src/server.js
+npm run seed:admin -- <user> <password> [role]
+```
+
+The frontend is static (no build step): `Zomboid_Server_Control.dc.html` is the
+page (deployed as `index.html`), `api.js` is the backend adapter, `support.js`
+is the template runtime. Point `FRONTEND_DIR` at a directory containing them for
+a single-process dev setup.
+
+## Deployment
+
+```
+source repo
+  └─ backend: npm ci && npm run build
+       └─ rsync -> /srv/zpanel/backend   (excluding .env and data/)
+  └─ frontend: Zomboid_Server_Control.dc.html -> /srv/zpanel/public/index.html
+               api.js, support.js        -> /srv/zpanel/public/
+  └─ systemctl restart pz-panel          (backend changes only)
+  └─ Caddy serves public/ + proxies /api
+```
+
+What requires which restart:
+
+| Change | Restart |
+|---|---|
+| Frontend files | none (Caddy serves the new statics immediately) |
+| Backend code | `pz-panel.service` only |
+| `<name>.ini` / SandboxVars / mods | PZ server restart — **when you choose**, via the panel or `systemctl restart <pz-unit>` (runtime-safe ini keys apply live) |
+| PZ JVM options / launcher | PZ server restart |
+| Documentation | nothing |
+
+Never restart the game server as a side effect of deploying panel code, and if
+an AMP-managed server coexists on the machine, never touch it when deploying
+the standalone stack.
+
+## Troubleshooting
+
+**Panel unreachable**
+`systemctl status pz-panel caddy` · `journalctl -u pz-panel -e` ·
+`curl -s http://127.0.0.1:8095/health` (expect `{"status":"ok"...}`) ·
+`ss -lntp | grep 8095`.
+
+**API returns 500s**
+`journalctl -u pz-panel -e` — the response body carries a stable error `code`;
+the journal has the detail. Check `.env` validity (the backend exits at boot
+with a precise message on invalid config).
+
+**RCON unavailable (503 `RCON_UNAVAILABLE`)**
+Is the game up? `systemctl status <pz-unit>`. Does the ini's `RCONPort` /
+`RCONPassword` match the panel's `.env`? Test locally:
+`ss -lntp | grep <rcon-port>` — the port must be listening and only reachable
+from localhost.
+
+**PZ server offline / won't start**
+`journalctl -u <pz-unit> -e` for JVM errors; check free memory (the JVM needs
+its `-Xmx` headroom); verify the ini's ports aren't already taken by another
+server (`ss -lnup`).
+
+**Mods not loading in game**
+Confirm the *Mod IDs* (not Workshop IDs) appear under `Mods=` in the ini; verify
+the Workshop content actually downloaded (`PZ_WORKSHOP_DIR`); PZ needs a restart
+to load new mods.
+
+**Permission denied in panel logs**
+The `zpanel` user lost read/write on a PZ path — re-check ACLs on the Server
+directory and files, and that new files inherit them (default ACLs).
+
+**systemd service failing repeatedly**
+`systemctl status <unit>` + `journalctl -u <unit> --since -1h`. Fix the root
+cause; avoid editing units ad-hoc — change the unit file and `daemon-reload`.
+
+Avoid destructive shortcuts: no `kill -9`, no deleting PZ data directories, no
+`chmod 777`.
+
+## Contributing & safety
+
+ZPanel performs **destructive administrative actions against live game
+servers** — stopping servers, banning players, rewriting server configuration.
+Treat every change accordingly:
+
+- Run the full gate before deploying: `npm run lint && npm run typecheck &&
+  npm test && npm run build`.
+- Never point a development panel at a production server "just to test".
+- Read **[AGENTS.md](AGENTS.md)** — the engineering rules, invariants, and
+  security boundaries for this codebase — before modifying anything.
+
+## License
+
+MIT (see `backend/package.json`).

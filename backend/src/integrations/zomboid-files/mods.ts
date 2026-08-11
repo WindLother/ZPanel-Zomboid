@@ -1,0 +1,117 @@
+import { parseIni } from './ini';
+
+/**
+ * Mod configuration in `servertest.ini`:
+ *   WorkshopItems=<workshopId>;<workshopId>;...   (Steam Workshop items to download)
+ *   Mods=<modId>;<modId>;...                       (Mod IDs actually loaded, in order)
+ *
+ * A Workshop ID is NOT a Mod ID, and a Workshop item may provide SEVERAL Mod IDs.
+ * PZ stores these as two flat lists with no recorded relationship, so we model
+ * WorkshopItems as first-class entities and resolve their Mod IDs from an
+ * injected resolver (disk mod.info discovery, then panel-recorded associations)
+ * — never by positional guessing.
+ */
+
+export interface ModsRaw {
+  workshopItems: string[];
+  mods: string[];
+}
+
+export type ModUpdateStatus = 'updated' | 'update_available' | 'unknown';
+
+/** Metadata + Mod IDs resolved for a Workshop item (injected into the builder). */
+export interface ResolvedWorkshopItem {
+  modIds: string[];
+  name: string | null;
+  author: string | null;
+  thumbnail: string | null;
+  lastUpdate: string | null;
+  /** true when the Mod IDs were determined from a real source (disk/associations). */
+  resolved: boolean;
+}
+
+export interface WorkshopItem {
+  /** null for a standalone/local Mod ID present in `Mods=` with no Workshop item. */
+  workshopId: string | null;
+  name: string | null;
+  author: string | null;
+  thumbnail: string | null;
+  lastUpdate: string | null;
+  /** All Mod IDs this Workshop item provides (one-to-many). */
+  modIds: string[];
+  /** Subset currently present in `Mods=` (i.e. actually loaded by the server). */
+  enabledModIds: string[];
+  /** false when the item's Mod IDs could not be determined (not downloaded yet). */
+  modIdsResolved: boolean;
+  enabled: boolean;
+  updateStatus: ModUpdateStatus;
+  loadOrder: number;
+}
+
+const splitList = (v: string | undefined): string[] =>
+  (v ?? '')
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+export function parseModsFromIni(iniText: string): ModsRaw {
+  const { values } = parseIni(iniText);
+  return {
+    workshopItems: splitList(values['WorkshopItems']),
+    mods: splitList(values['Mods']),
+  };
+}
+
+/**
+ * Build the Workshop-item-centric view from the two ini lists plus a resolver.
+ * PURE and deterministic (inject `resolve`). Mods present in `Mods=` that cannot
+ * be attributed to any Workshop item are surfaced as standalone entries
+ * (workshopId=null) — never dropped and never positionally paired.
+ */
+export function buildWorkshopItems(
+  raw: ModsRaw,
+  resolve: (workshopId: string) => ResolvedWorkshopItem,
+): WorkshopItem[] {
+  const items: WorkshopItem[] = [];
+  const attributed = new Set<string>();
+
+  for (const workshopId of raw.workshopItems) {
+    const r = resolve(workshopId);
+    const modIds = r.modIds;
+    const enabledModIds = modIds.filter((m) => raw.mods.includes(m));
+    enabledModIds.forEach((m) => attributed.add(m));
+    items.push({
+      workshopId,
+      name: r.name,
+      author: r.author,
+      thumbnail: r.thumbnail,
+      lastUpdate: r.lastUpdate,
+      modIds,
+      enabledModIds,
+      modIdsResolved: r.resolved,
+      enabled: enabledModIds.length > 0,
+      updateStatus: 'unknown',
+      loadOrder: items.length + 1,
+    });
+  }
+
+  // Standalone / local Mod IDs: in `Mods=` but owned by no Workshop item.
+  for (const modId of raw.mods) {
+    if (attributed.has(modId)) continue;
+    items.push({
+      workshopId: null,
+      name: modId,
+      author: null,
+      thumbnail: null,
+      lastUpdate: null,
+      modIds: [modId],
+      enabledModIds: [modId],
+      modIdsResolved: true,
+      enabled: true,
+      updateStatus: 'unknown',
+      loadOrder: items.length + 1,
+    });
+  }
+
+  return items;
+}
