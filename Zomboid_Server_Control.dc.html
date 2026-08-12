@@ -444,8 +444,8 @@ input,select,textarea{font-family:inherit}
 <input type="search" value="{{ form.modSearch }}" onChange="{{ form.onModSearch }}" placeholder="Search mods…" aria-label="Search mods" style="flex:1;min-width:220px;padding:9px 12px;border:1px solid #34302a;border-radius:5px;background:#161410;color:#e9e5dd;font:400 13px 'IBM Plex Sans',sans-serif">
 <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#918a80">{{ modSummary }}</span>
 <sc-if value="{{ can.moderate }}"><button type="button" onClick="{{ actions.checkMods }}" style="padding:9px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Check For Updates</button></sc-if>
-<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ actions.updateMods }}" style="padding:9px 13px;border:1px solid #45632f;border-radius:5px;background:#1b2415;color:#a8cf87;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#22301a">Update Mods</button>
-<button type="button" onClick="{{ actions.openAddMod }}" style="padding:9px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Add Mod</button></sc-if>
+<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ actions.updateMods }}" style="padding:9px 13px;border:1px solid #45632f;border-radius:5px;background:#1b2415;color:#a8cf87;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#22301a">Update Mods</button></sc-if>
+<sc-if value="{{ can.moderate }}"><button type="button" onClick="{{ actions.openAddMod }}" style="padding:9px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Add Mod</button></sc-if>
 </div>
 <section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
 <div style="overflow-x:auto"><div style="min-width:860px">
@@ -474,8 +474,8 @@ input,select,textarea{font-family:inherit}
 <span style="font:400 12px 'IBM Plex Mono',monospace;color:#918a80">{{ m.workshopIdText }}</span>
 <span style="font:400 12px 'IBM Plex Mono',monospace;color:#6b655d;overflow:hidden;text-overflow:ellipsis">{{ m.modIdsText }}</span>
 <span style="display:flex;align-items:center;gap:7px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ m.statusColor }}"><span style="font:600 11px 'IBM Plex Mono',monospace">{{ m.statusIcon }}</span>{{ m.statusText }}</span>
-<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ m.toggle }}" aria-pressed="{{ m.enabled }}" style="justify-self:start;padding:4px 9px;border:1px solid {{ m.enabledBorder }};border-radius:4px;background:{{ m.enabledBg }};color:{{ m.enabledColor }};font:500 11px 'IBM Plex Mono',monospace;cursor:pointer">{{ m.enabledLabel }}</button></sc-if>
-<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ m.remove }}" aria-label="Remove mod" style="width:28px;height:26px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 12px 'IBM Plex Sans',sans-serif" style-hover="background:#26160f;color:#d1836e">✕</button></sc-if>
+<sc-if value="{{ can.moderate }}"><button type="button" onClick="{{ m.toggle }}" aria-pressed="{{ m.enabled }}" style="justify-self:start;padding:4px 9px;border:1px solid {{ m.enabledBorder }};border-radius:4px;background:{{ m.enabledBg }};color:{{ m.enabledColor }};font:500 11px 'IBM Plex Mono',monospace;cursor:pointer">{{ m.enabledLabel }}</button></sc-if>
+<sc-if value="{{ can.moderate }}"><button type="button" onClick="{{ m.remove }}" aria-label="Remove mod" style="width:28px;height:26px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 12px 'IBM Plex Sans',sans-serif" style-hover="background:#26160f;color:#d1836e">✕</button></sc-if>
 </div>
 </sc-for>
 </div></div>

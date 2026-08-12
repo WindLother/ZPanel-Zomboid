@@ -125,13 +125,23 @@ describe('role-gated controls (cosmetic mirror of backend authz)', () => {
     expect(html).toMatch(/can\.admin[\s\S]{0,400}RECENT ACTIVITY/);
   });
 
-  it('whitelist, settings, sandbox and mods mutations are admin-gated; mod update-check is moderator', () => {
+  it('whitelist, settings and sandbox mutations are admin-gated', () => {
     expect(html).toMatch(/can\.admin[^\n]*openAddWhitelistUser/);
     expect(html).toMatch(/can\.admin[^\n]*openAddSteam/);
     expect(html).toMatch(/can\.admin[\s\S]{0,400}actions\.saveSettings/);
     expect(html).toMatch(/can\.admin[\s\S]{0,200}actions\.saveSandbox/);
-    expect(html).toMatch(/can\.admin[^\n]*actions\.updateMods/);
+  });
+
+  it('mod curation (add/remove/toggle/update-check) renders for moderator+', () => {
+    expect(html).toMatch(/can\.moderate[^\n]*actions\.openAddMod/);
+    expect(html).toMatch(/can\.moderate[^\n]*m\.remove/);
+    expect(html).toMatch(/can\.moderate[^\n]*m\.toggle/);
     expect(html).toMatch(/can\.moderate[^\n]*actions\.checkMods/);
+  });
+
+  it('mod load-order moves and content updates stay admin-gated', () => {
+    expect(html).toMatch(/can\.admin[^\n]*actions\.updateMods/);
+    expect(html).toMatch(/can\.admin[^\n]*m\.up/);
   });
 
   it('player context menu is role-gated in code (kick/ban moderator+, access admin)', () => {

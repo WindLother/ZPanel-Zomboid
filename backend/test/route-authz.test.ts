@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 
 // Isolate this suite's panel DB BEFORE any app/db import.
-process.env.PANEL_DB_PATH = '/tmp/zpanel-test/activity-suite.db';
+process.env.PANEL_DB_PATH = '/tmp/zpanel-test/route-authz-suite.db';
 
 const ORIGIN = 'http://localhost:8095';
 const PW = { admin: 'BossPassword12', mod: 'ModPassword12', ro: 'ReadonlyPass12' };
@@ -37,7 +37,7 @@ async function login(username: string, password: string) {
 beforeAll(async () => {
   const fs = await import('node:fs');
   fs.mkdirSync('/tmp/zpanel-test', { recursive: true });
-  for (const s of ['', '-wal', '-shm']) fs.rmSync('/tmp/zpanel-test/activity-suite.db' + s, { force: true });
+  for (const s of ['', '-wal', '-shm']) fs.rmSync('/tmp/zpanel-test/route-authz-suite.db' + s, { force: true });
   db = (await import('../src/db')).db;
   auth = await import('../src/modules/auth/service');
   audit = await import('../src/modules/activity/service');
@@ -107,6 +107,61 @@ describe('server lifecycle authorization matrix', () => {
     expect(res.statusCode).toBe(200);
     const id = res.json().scheduled?.id as string;
     expect((await inject('DELETE', `/api/server/scheduled/${id}`, { cookie, csrf })).statusCode).toBe(200);
+  });
+});
+
+// Mod curation: moderators may add/remove/enable/disable Workshop items (and
+// look them up). Load-order moves and content updates stay admin-only.
+describe('mods authorization matrix', () => {
+  // Authorization is the subject here, so assert on the GUARD: a 403 means the
+  // role was rejected; anything else means the guard let it through (the
+  // handler then works against the isolated test PZ dir).
+  const MOD_ROUTES: Array<[string, string, unknown]> = [
+    ['POST', '/api/mods/lookup', { workshopId: '123456789' }],
+    ['POST', '/api/mods', { workshopId: '123456789', modIds: ['test_mod'] }],
+    ['DELETE', '/api/mods/123456789', undefined],
+    ['DELETE', '/api/mods/standalone/test_mod', undefined],
+    ['POST', '/api/mods/123456789/toggle', {}],
+  ];
+  const ADMIN_ONLY: Array<[string, string, unknown]> = [
+    ['POST', '/api/mods/123456789/move', { direction: 1 }],
+    ['POST', '/api/mods/update', {}],
+  ];
+
+  it('moderator passes the guard on lookup/add/remove/remove-standalone/toggle', async () => {
+    const { cookie, csrf } = await login('mod1', PW.mod);
+    for (const [method, url, payload] of MOD_ROUTES) {
+      const res = await inject(method, url, { cookie, csrf, payload });
+      expect(res.statusCode, `${method} ${url} must not be forbidden for moderator`).not.toBe(403);
+    }
+  });
+
+  it('moderator is still forbidden from load-order moves and content updates', async () => {
+    const { cookie, csrf } = await login('mod1', PW.mod);
+    for (const [method, url, payload] of ADMIN_ONLY) {
+      expect((await inject(method, url, { cookie, csrf, payload })).statusCode, `${method} ${url}`).toBe(403);
+    }
+  });
+
+  it('readonly is forbidden from every mod mutation, and may still list mods', async () => {
+    const { cookie, csrf } = await login('ro1', PW.ro);
+    for (const [method, url, payload] of [...MOD_ROUTES, ...ADMIN_ONLY]) {
+      expect((await inject(method, url, { cookie, csrf, payload })).statusCode, `${method} ${url}`).toBe(403);
+    }
+    expect((await inject('GET', '/api/mods', { cookie })).statusCode).toBe(200);
+  });
+
+  it('unauthenticated is rejected on every mod route', async () => {
+    for (const [method, url, payload] of [...MOD_ROUTES, ...ADMIN_ONLY]) {
+      expect([401, 403], `${method} ${url}`).toContain((await inject(method, url, { payload })).statusCode);
+    }
+  });
+
+  it('admin retains access to every mod route', async () => {
+    const { cookie, csrf } = await login('boss', PW.admin);
+    for (const [method, url, payload] of [...MOD_ROUTES, ...ADMIN_ONLY]) {
+      expect((await inject(method, url, { cookie, csrf, payload })).statusCode, `${method} ${url}`).not.toBe(403);
+    }
   });
 });
 

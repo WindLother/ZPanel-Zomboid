@@ -335,15 +335,22 @@ Invariants:
   admin=2`).
 - **Admin-only:** Users & Access (`/api/users*`), console (`/api/console`),
   **Activity Log viewing (`GET /api/activity`)**, settings/sandbox writes,
-  whitelist mutations, **server start/stop/update**, mods mutations (except the
-  moderator-level update check), privileged player actions, system connections.
-  Audit **recording** covers every role — restricting who VIEWS the trail never
+  whitelist mutations, **server start/stop/update**, **mod load-order moves and
+  content updates**, privileged player actions, system connections. Audit
+  **recording** covers every role — restricting who VIEWS the trail never
   disables writing to it.
 - **Lifecycle is split by recoverability:** `POST /api/server/restart` (and
   cancelling a scheduled restart) is `moderator` — the server comes back on its
   own; `start`/`stop`/`update` stay `admin` because they leave it down or change
   installed content. Keep the frontend gate (`can.moderate` on Restart,
   `can.admin` on Stop/Start) in step with these guards.
+- **Mod curation is `moderator`:** lookup, add, remove (Workshop item and
+  standalone Mod ID), enable/disable, and update checks. Load-order `move` and
+  the content-update stub stay `admin`. Two constraints to preserve when
+  touching these: `lookup` is step 1 of the add flow, so it can never be more
+  restricted than add; and `toggle` only edits `Mods=` while keeping the
+  Workshop item, so it can never be more restricted than remove — a role that
+  may delete a mod must also be able to merely disable it.
 - The frontend mirrors this in one place: the `PAGE_ACCESS` map in
   `Zomboid_Server_Control.dc.html` drives navigation, direct-route fallback,
   and role-aware data loading. Change route guards and that map together.

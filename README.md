@@ -312,7 +312,7 @@ security boundary):
 | Role | Can |
 |---|---|
 | `admin` | Everything: full lifecycle (start/stop/restart/update), settings, sandbox, mods, whitelist mutations, player powers/items/XP, console, Users & Access, Activity Log, system health |
-| `moderator` | Day-to-day moderation: kick/ban, save, broadcast, **restart (immediate or scheduled, incl. cancelling it)**, moderator quick-actions, mod update checks — no start/stop/update, no settings/sandbox/mods/whitelist writes, no console, no user management, no Activity Log |
+| `moderator` | Day-to-day moderation: kick/ban, save, broadcast, **restart (immediate or scheduled, incl. cancelling it)**, **mod curation (add / remove / enable / disable / update checks)**, moderator quick-actions — no start/stop/update, no mod load-order changes, no settings/sandbox/whitelist writes, no console, no user management, no Activity Log |
 | `readonly` | View the read pages (dashboard, players, whitelist, settings, sandbox, mods, logs); no mutations, no admin pages |
 
 Canonical page access (navigation, direct-route fallback, and data loading all
@@ -329,6 +329,10 @@ follow it; the backend enforces the same matrix server-side):
 Lifecycle is split by recoverability: **restart** is available to moderators
 (the server comes back on its own), while **start / stop / update** stay
 admin-only because they leave the server down or change installed content.
+
+Mods are split the same way: moderators **curate** the list (add, remove,
+enable/disable, check for updates), while **load-order changes** and **content
+updates** remain admin-only.
 
 Moderator/readonly actions are still **recorded** in the audit trail — the
 admin-only restriction applies to *viewing* it, never to auditing.
