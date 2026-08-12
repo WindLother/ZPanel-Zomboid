@@ -48,8 +48,8 @@ panel never fabricates game state.
   Argon2id password hashing, session invalidation, and last-admin protection.
   These are **panel accounts, not game accounts** (see below).
 - **Activity / audit** — every mutating action is recorded (actor, action,
-  target, outcome, source IP) and shown in the panel. Audit entries never
-  contain passwords or hashes.
+  target, outcome, source IP); the Activity Log view is admin-only, while
+  recording covers all roles. Audit entries never contain passwords or hashes.
 - **System health** — `/health` endpoint plus an admin-only integration report
   (RCON reachability, runtime capabilities, file access).
 
@@ -311,9 +311,23 @@ security boundary):
 
 | Role | Can |
 |---|---|
-| `admin` | Everything: lifecycle, settings, sandbox, mods, whitelist mutations, player powers/items/XP, console, Users & Access, system health |
-| `moderator` | Day-to-day moderation: kick/ban, save, broadcast, admin quick-actions, mod update checks — no settings writes, no console, no user management |
-| `readonly` | View everything non-secret; no mutations |
+| `admin` | Everything: lifecycle, settings, sandbox, mods, whitelist mutations, player powers/items/XP, console, Users & Access, Activity Log, system health |
+| `moderator` | Day-to-day moderation: kick/ban, save, broadcast, moderator quick-actions, mod update checks — no lifecycle, no settings/sandbox/mods/whitelist writes, no console, no user management, no Activity Log |
+| `readonly` | View the read pages (dashboard, players, whitelist, settings, sandbox, mods, logs); no mutations, no admin pages |
+
+Canonical page access (navigation, direct-route fallback, and data loading all
+follow it; the backend enforces the same matrix server-side):
+
+| Page | admin | moderator | readonly |
+|---|---|---|---|
+| Dashboard, Players, Whitelist, Settings, Sandbox, Mods, Logs | ✔ | ✔ (read; mutations per role) | ✔ (read-only) |
+| Admin Tools | ✔ (all tools) | ✔ (moderator-level tools only) | ✘ |
+| Server Console | ✔ | ✘ | ✘ |
+| Users & Access | ✔ | ✘ | ✘ |
+| Activity Log | ✔ | ✘ | ✘ |
+
+Moderator/readonly actions are still **recorded** in the audit trail — the
+admin-only restriction applies to *viewing* it, never to auditing.
 
 Additional protections: session cookies are signed and `HttpOnly`; role changes,
 password resets, and disables immediately invalidate the target's sessions; the

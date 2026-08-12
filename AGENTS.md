@@ -334,8 +334,14 @@ Invariants:
   `requireRole(min)` on every route, rank-based (`readonly=0, moderator=1,
   admin=2`).
 - **Admin-only:** Users & Access (`/api/users*`), console (`/api/console`),
-  settings/sandbox writes, whitelist mutations, lifecycle, mods mutations,
-  system connections.
+  **Activity Log viewing (`GET /api/activity`)**, settings/sandbox writes,
+  whitelist mutations, lifecycle, mods mutations (except the moderator-level
+  update check), privileged player actions, system connections. Audit
+  **recording** covers every role — restricting who VIEWS the trail never
+  disables writing to it.
+- The frontend mirrors this in one place: the `PAGE_ACCESS` map in
+  `Zomboid_Server_Control.dc.html` drives navigation, direct-route fallback,
+  and role-aware data loading. Change route guards and that map together.
 - CSRF: unsafe methods on `/api/*` require the session-bound `x-csrf-token`
   header plus an Origin/Referer check against `PANEL_ORIGINS` (login gets the
   origin check only). Login is rate-limited (8/min/IP).
@@ -382,6 +388,18 @@ Invariants:
 - Watch for class-field shadowing generally: two same-named fields on the app
   component compile fine and the later silently wins.
 - Role gating in the UI is cosmetic UX; the backend check is the boundary.
+- **Bootstrap invariant: never eagerly request endpoints the authenticated role
+  cannot access.** `load()` resolves `authApi.me()` FIRST, then fetches only
+  role-authorized domains (admin-only domains like console/activity are simply
+  not requested for other roles). Discovering a 403 the hard way is a bug.
+- **Bootstrap invariant: a forbidden or failed optional domain must never
+  prevent Dashboard bootstrap.** Only the critical dashboard set (overview,
+  history, players) may block; every other domain loads independently with its
+  own error handling, and every bootstrap attempt ends with `loading: false` —
+  either data-ready or a visible error state, never a permanent spinner. (This
+  class of bug shipped once: a moderator's dashboard hung forever because the
+  admin-only `/api/console` sat in the bootstrap `Promise.all`.
+  `test/frontend-rbac.test.ts` guards the wiring.)
 - Do not fabricate data client-side; render backend nulls as `—`.
 - Never render or store passwords beyond the create/reset form fields; there is
   no "show existing password" anywhere.

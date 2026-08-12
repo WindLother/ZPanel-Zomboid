@@ -75,8 +75,10 @@ input,select,textarea{font-family:inherit}
 </div>
 <div style="display:flex;align-items:center;gap:10px">
 <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#6b655d">Updated {{ lastUpdated }}</span>
+<sc-if value="{{ can.moderate }}">
 <button type="button" onClick="{{ actions.openBroadcast }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19;color:#e9e5dd">Broadcast</button>
 <button type="button" onClick="{{ actions.save }}" disabled="{{ srv.notOnline }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save World</button>
+</sc-if>
 </div>
 </header>
 
@@ -127,12 +129,18 @@ input,select,textarea{font-family:inherit}
 </div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
 <sc-if value="{{ srv.isOnline }}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{ can.moderate }}">
 <button type="button" onClick="{{ actions.save }}" style="padding:9px 14px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#e9e5dd;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Save World</button>
+</sc-if>
+<sc-if value="{{ can.admin }}">
 <button type="button" onClick="{{ actions.openRestart }}" style="padding:9px 14px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Restart</button>
 <button type="button" onClick="{{ actions.openStop }}" style="padding:9px 14px;border:1px solid #573026;border-radius:5px;background:#26160f;color:#e28c74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#331a12">Stop Server</button>
 </sc-if>
+</sc-if>
 <sc-if value="{{ srv.isOffline }}">
+<sc-if value="{{ can.admin }}">
 <button type="button" onClick="{{ actions.start }}" style="padding:9px 16px;border:1px solid #45632f;border-radius:5px;background:#1b2415;color:#a8cf87;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#22301a">Start Server</button>
+</sc-if>
 </sc-if>
 </div>
 </div>
@@ -206,6 +214,7 @@ input,select,textarea{font-family:inherit}
 </section>
 
 <div style="display:flex;flex-direction:column;gap:16px">
+<sc-if value="{{ can.moderate }}">
 <section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
 <div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">BROADCAST MESSAGE</div>
 <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
@@ -217,6 +226,8 @@ input,select,textarea{font-family:inherit}
 </div>
 </div>
 </section>
+</sc-if>
+<sc-if value="{{ can.admin }}">
 <section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden;flex:1">
 <div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;display:flex;align-items:center;justify-content:space-between">
 <span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">RECENT ACTIVITY</span>
@@ -231,6 +242,7 @@ input,select,textarea{font-family:inherit}
 </sc-for>
 </div>
 </section>
+</sc-if>
 </div>
 </div>
 </sc-if>
@@ -282,7 +294,7 @@ input,select,textarea{font-family:inherit}
 <section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
 <div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;display:flex;align-items:center;justify-content:space-between">
 <span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">WHITELISTED USERS</span>
-<button type="button" onClick="{{ actions.openAddWhitelistUser }}" style="padding:6px 11px;border:1px solid #34302a;border-radius:4px;background:#1c1a16;color:#e9e5dd;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Add User</button>
+<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ actions.openAddWhitelistUser }}" style="padding:6px 11px;border:1px solid #34302a;border-radius:4px;background:#1c1a16;color:#e9e5dd;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Add User</button></sc-if>
 </div>
 <sc-if value="{{ whitelistUsersEmpty }}">
 <div style="padding:26px 18px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6b655d">No users are whitelisted yet.</div>
@@ -290,14 +302,14 @@ input,select,textarea{font-family:inherit}
 <sc-for list="{{ whitelistUsers }}" as="u" hint-placeholder-count="5">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;border-bottom:1px solid #201d18">
 <span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#e9e5dd">{{ u.name }}</span>
-<button type="button" onClick="{{ u.remove }}" style="padding:5px 10px;border:1px solid #3a2620;border-radius:4px;background:#1d1512;color:#d1836e;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#26160f">Remove</button>
+<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ u.remove }}" style="padding:5px 10px;border:1px solid #3a2620;border-radius:4px;background:#1d1512;color:#d1836e;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#26160f">Remove</button></sc-if>
 </div>
 </sc-for>
 </section>
 <section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
 <div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;display:flex;align-items:center;justify-content:space-between">
 <span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">STEAM IDS</span>
-<button type="button" onClick="{{ actions.openAddSteam }}" style="padding:6px 11px;border:1px solid #34302a;border-radius:4px;background:#1c1a16;color:#e9e5dd;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Add Steam ID</button>
+<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ actions.openAddSteam }}" style="padding:6px 11px;border:1px solid #34302a;border-radius:4px;background:#1c1a16;color:#e9e5dd;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Add Steam ID</button></sc-if>
 </div>
 <sc-if value="{{ whitelistIdsEmpty }}">
 <div style="padding:26px 18px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:#6b655d">No Steam IDs registered.</div>
@@ -305,7 +317,7 @@ input,select,textarea{font-family:inherit}
 <sc-for list="{{ whitelistIds }}" as="u" hint-placeholder-count="3">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;border-bottom:1px solid #201d18">
 <span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#cfc9c0">{{ u.name }}</span>
-<button type="button" onClick="{{ u.remove }}" style="padding:5px 10px;border:1px solid #3a2620;border-radius:4px;background:#1d1512;color:#d1836e;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#26160f">Remove</button>
+<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ u.remove }}" style="padding:5px 10px;border:1px solid #3a2620;border-radius:4px;background:#1d1512;color:#d1836e;font:500 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#26160f">Remove</button></sc-if>
 </div>
 </sc-for>
 </section>
@@ -317,8 +329,10 @@ input,select,textarea{font-family:inherit}
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border:1px solid #26231e;border-radius:7px;background:#161410;position:sticky;top:-22px;z-index:5">
 <span style="display:flex;align-items:center;gap:8px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:{{ settingsDirty.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ settingsDirty.color }}"></span>{{ settingsDirty.text }}</span>
 <div style="display:flex;gap:8px">
+<sc-if value="{{ can.admin }}">
 <button type="button" onClick="{{ actions.discardSettings }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Discard Changes</button>
 <button type="button" onClick="{{ actions.saveSettings }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save Changes</button>
+</sc-if>
 </div>
 </div>
 <sc-for list="{{ settingsSections }}" as="sec" hint-placeholder-count="3">
@@ -373,8 +387,10 @@ input,select,textarea{font-family:inherit}
 </div>
 <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #26231e;border-radius:7px;background:#161410">
 <span style="display:flex;align-items:center;gap:8px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ sandboxDirty.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ sandboxDirty.color }}"></span>{{ sandboxDirty.text }}</span>
+<sc-if value="{{ can.admin }}">
 <button type="button" onClick="{{ actions.saveSandbox }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save Changes</button>
 <button type="button" onClick="{{ actions.discardSandbox }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Discard</button>
+</sc-if>
 </div>
 </div>
 
@@ -427,9 +443,9 @@ input,select,textarea{font-family:inherit}
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
 <input type="search" value="{{ form.modSearch }}" onChange="{{ form.onModSearch }}" placeholder="Search mods…" aria-label="Search mods" style="flex:1;min-width:220px;padding:9px 12px;border:1px solid #34302a;border-radius:5px;background:#161410;color:#e9e5dd;font:400 13px 'IBM Plex Sans',sans-serif">
 <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#918a80">{{ modSummary }}</span>
-<button type="button" onClick="{{ actions.checkMods }}" style="padding:9px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Check For Updates</button>
-<button type="button" onClick="{{ actions.updateMods }}" style="padding:9px 13px;border:1px solid #45632f;border-radius:5px;background:#1b2415;color:#a8cf87;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#22301a">Update Mods</button>
-<button type="button" onClick="{{ actions.openAddMod }}" style="padding:9px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Add Mod</button>
+<sc-if value="{{ can.moderate }}"><button type="button" onClick="{{ actions.checkMods }}" style="padding:9px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Check For Updates</button></sc-if>
+<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ actions.updateMods }}" style="padding:9px 13px;border:1px solid #45632f;border-radius:5px;background:#1b2415;color:#a8cf87;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#22301a">Update Mods</button>
+<button type="button" onClick="{{ actions.openAddMod }}" style="padding:9px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Add Mod</button></sc-if>
 </div>
 <section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
 <div style="overflow-x:auto"><div style="min-width:860px">
@@ -447,8 +463,8 @@ input,select,textarea{font-family:inherit}
 <div style="display:flex;align-items:center;gap:4px">
 <span style="font:500 11.5px 'IBM Plex Mono',monospace;color:#918a80">{{ m.loadOrder }}</span>
 <div style="display:flex;flex-direction:column;gap:1px">
-<button type="button" onClick="{{ m.up }}" aria-label="Move up" style="width:16px;height:11px;border:1px solid #2b2822;border-radius:2px;background:#1b1813;color:#918a80;font:600 7px 'IBM Plex Sans',sans-serif;cursor:pointer;padding:0;line-height:1">▲</button>
-<button type="button" onClick="{{ m.down }}" aria-label="Move down" style="width:16px;height:11px;border:1px solid #2b2822;border-radius:2px;background:#1b1813;color:#918a80;font:600 7px 'IBM Plex Sans',sans-serif;cursor:pointer;padding:0;line-height:1">▼</button>
+<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ m.up }}" aria-label="Move up" style="width:16px;height:11px;border:1px solid #2b2822;border-radius:2px;background:#1b1813;color:#918a80;font:600 7px 'IBM Plex Sans',sans-serif;cursor:pointer;padding:0;line-height:1">▲</button>
+<button type="button" onClick="{{ m.down }}" aria-label="Move down" style="width:16px;height:11px;border:1px solid #2b2822;border-radius:2px;background:#1b1813;color:#918a80;font:600 7px 'IBM Plex Sans',sans-serif;cursor:pointer;padding:0;line-height:1">▼</button></sc-if>
 </div>
 </div>
 <div style="display:flex;align-items:center;gap:10px;min-width:0">
@@ -458,8 +474,8 @@ input,select,textarea{font-family:inherit}
 <span style="font:400 12px 'IBM Plex Mono',monospace;color:#918a80">{{ m.workshopIdText }}</span>
 <span style="font:400 12px 'IBM Plex Mono',monospace;color:#6b655d;overflow:hidden;text-overflow:ellipsis">{{ m.modIdsText }}</span>
 <span style="display:flex;align-items:center;gap:7px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ m.statusColor }}"><span style="font:600 11px 'IBM Plex Mono',monospace">{{ m.statusIcon }}</span>{{ m.statusText }}</span>
-<button type="button" onClick="{{ m.toggle }}" aria-pressed="{{ m.enabled }}" style="justify-self:start;padding:4px 9px;border:1px solid {{ m.enabledBorder }};border-radius:4px;background:{{ m.enabledBg }};color:{{ m.enabledColor }};font:500 11px 'IBM Plex Mono',monospace;cursor:pointer">{{ m.enabledLabel }}</button>
-<button type="button" onClick="{{ m.remove }}" aria-label="Remove mod" style="width:28px;height:26px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 12px 'IBM Plex Sans',sans-serif" style-hover="background:#26160f;color:#d1836e">✕</button>
+<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ m.toggle }}" aria-pressed="{{ m.enabled }}" style="justify-self:start;padding:4px 9px;border:1px solid {{ m.enabledBorder }};border-radius:4px;background:{{ m.enabledBg }};color:{{ m.enabledColor }};font:500 11px 'IBM Plex Mono',monospace;cursor:pointer">{{ m.enabledLabel }}</button></sc-if>
+<sc-if value="{{ can.admin }}"><button type="button" onClick="{{ m.remove }}" aria-label="Remove mod" style="width:28px;height:26px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 12px 'IBM Plex Sans',sans-serif" style-hover="background:#26160f;color:#d1836e">✕</button></sc-if>
 </div>
 </sc-for>
 </div></div>
@@ -758,9 +774,27 @@ const NAV = [
     { id: "players", label: "Players" }, { id: "whitelist", label: "Whitelist" },
     { id: "settings", label: "Server Settings" }, { id: "sandbox", label: "Sandbox Settings" },
     { id: "mods", label: "Mods" }, { id: "logs", label: "Logs" }] },
-  { label: "ADMINISTRATION", items: [{ id: "admin", label: "Admin Tools" }, { id: "users", label: "Users & Access", adminOnly: true }] },
+  { label: "ADMINISTRATION", items: [{ id: "admin", label: "Admin Tools" }, { id: "users", label: "Users & Access" }] },
   { label: "SYSTEM", items: [{ id: "console", label: "Server Console" }, { id: "activity", label: "Activity Log" }] },
 ];
+// Page access by panel role. This MIRRORS the backend route guards (the real
+// security boundary — see backend/src/modules/*/routes.ts): console, activity
+// and users are admin-only APIs; the admin-tools API requires moderator.
+// Navigation, direct-route fallback, and data loading all derive from this map.
+const PAGE_ACCESS = {
+  dashboard: ["admin", "moderator", "readonly"],
+  players: ["admin", "moderator", "readonly"],
+  whitelist: ["admin", "moderator", "readonly"],
+  settings: ["admin", "moderator", "readonly"],
+  sandbox: ["admin", "moderator", "readonly"],
+  mods: ["admin", "moderator", "readonly"],
+  logs: ["admin", "moderator", "readonly"],
+  admin: ["admin", "moderator"],
+  console: ["admin"],
+  users: ["admin"],
+  activity: ["admin"],
+};
+const canAccessPage = (id, role) => (PAGE_ACCESS[id] || []).includes(role);
 // Panel role: canonical backend id <-> frontend label.
 const PANEL_ROLES = [{ id: "admin", label: "Admin" }, { id: "moderator", label: "Moderator" }, { id: "readonly", label: "Read Only" }];
 const ROLE_COLORS = { admin: { color: "#e8bf74", border: "#6b5628" }, moderator: { color: "#a8cf87", border: "#45632f" }, readonly: { color: "#7f9bb5", border: "#2f4453" } };
@@ -807,6 +841,9 @@ class Component extends DCLogic {
       this.setState({ srv });
     }
     if (prev.dataState !== this.props.dataState) this.load();
+    // Direct-route protection: if route state ever points at a page this role
+    // cannot access, fall back to the dashboard (never request its API).
+    if (this.state.me && !canAccessPage(this.state.route, this.state.me.role)) this.setState({ route: "dashboard" });
     if (this.state.route === "users" && !this.state.usersLoaded) this.loadUsers();
     if (this.state.autoscroll && this.logsRef.current) this.logsRef.current.scrollTop = this.logsRef.current.scrollHeight;
     if (this.consoleRef.current) this.consoleRef.current.scrollTop = this.consoleRef.current.scrollHeight;
@@ -818,29 +855,65 @@ class Component extends DCLogic {
     this.setState({ loading: true, error: null });
     const api = this.state.api || (await import("./api.js"));
     if (ds === "error") { this.setState({ api, loading: false, error: "unreachable" }); return; }
-    const [srv, chart, players, whitelist, settings, sandbox, mods, logs, consoleLines, activity, me] = await Promise.all([
-      api.serverApi.getOverview(), api.serverApi.getHistory(), api.playersApi.list(), api.whitelistApi.list(),
-      api.settingsApi.get(), api.sandboxApi.get(), api.modsApi.list(), api.logsApi.recent(), api.consoleApi.recent(), api.activityApi.list(),
-      api.authApi.me().catch(() => ({ authenticated: false })),
-    ]);
-    if (this.props.serverState) api.serverApi.setStatus(this.props.serverState);
-    this.setState({
-      api, loading: false, error: null, srv: this.props.serverState ? { ...srv, status: this.props.serverState } : srv,
-      chart, players, whitelist, settings, settingsBase: JSON.parse(JSON.stringify(settings)),
-      sandbox, sandboxBase: JSON.parse(JSON.stringify(sandbox)), mods, logs, consoleLines, activity, updatedAt: Date.now(),
-      me: me && me.authenticated ? me.user : null,
-    });
-    if (!this.unsubLogs && this.props.liveUpdates !== false) {
-      this.unsubLogs = api.logsApi.subscribe((line) => {
-        if (this.state.paused) return;
-        this.setState((s) => ({ logs: s.logs.concat(line).slice(-260) }));
+    // Invariant: every bootstrap attempt ends with loading=false — either with
+    // data ready or with a visible error state. Never a permanent spinner.
+    try {
+      // 1. Resolve the panel user FIRST — every subsequent request is chosen by
+      //    role. Never call an endpoint just to discover it returns 403.
+      const meRes = await api.authApi.me().catch(() => ({ authenticated: false }));
+      const me = meRes && meRes.authenticated ? meRes.user : null;
+      const role = me ? me.role : null;
+      // 2. Critical dashboard bootstrap only (readable by every panel role).
+      //    If THIS fails it is a real operational problem — surfaced below.
+      const [srv, chart, players] = await Promise.all([
+        api.serverApi.getOverview(), api.serverApi.getHistory(), api.playersApi.list(),
+      ]);
+      if (this.props.serverState) api.serverApi.setStatus(this.props.serverState);
+      this.setState({
+        api, loading: false, error: null, me,
+        srv: this.props.serverState ? { ...srv, status: this.props.serverState } : srv,
+        chart, players, updatedAt: Date.now(),
+        route: canAccessPage(this.state.route, role) ? this.state.route : "dashboard",
       });
+      // 3. Page data beyond the dashboard — per-domain, role-aware, and never
+      //    blocking the dashboard (see loadPageData).
+      this.loadPageData(api, role);
+      if (!this.unsubLogs && this.props.liveUpdates !== false) {
+        this.unsubLogs = api.logsApi.subscribe((line) => {
+          if (this.state.paused) return;
+          this.setState((s) => ({ logs: s.logs.concat(line).slice(-260) }));
+        });
+      }
+      this.statusPoll = this.statusPoll || setInterval(async () => {
+        if (!this.state.api) return;
+        const s = await this.state.api.serverApi.getOverview();
+        this.setState({ srv: s });
+      }, 2000);
+    } catch (e) {
+      // Critical bootstrap failed (backend/RCON/connectivity) — show the error
+      // screen with retry instead of spinning forever.
+      this.setState({ api, loading: false, error: (e && e.message) || "unreachable" });
     }
-    this.statusPoll = this.statusPoll || setInterval(async () => {
-      if (!this.state.api) return;
-      const s = await this.state.api.serverApi.getOverview();
-      this.setState({ srv: s });
-    }, 2000);
+  }
+  /**
+   * Non-dashboard page data. Each domain loads independently: only endpoints
+   * the role is AUTHORIZED for are requested (admin-only domains are simply
+   * not fetched — authorization lives in the backend, this avoids guaranteed
+   * 403s), and a single failed domain keeps its empty default and logs a
+   * warning without ever breaking the dashboard.
+   */
+  loadPageData(api, role) {
+    const grab = (promise, apply, what) =>
+      promise.then((v) => this.setState(apply(v))).catch((e) => console.warn("[zpanel] " + what + " unavailable:", (e && e.message) || e));
+    grab(api.whitelistApi.list(), (v) => ({ whitelist: v }), "whitelist");
+    grab(api.settingsApi.get(), (v) => ({ settings: v, settingsBase: JSON.parse(JSON.stringify(v)) }), "settings");
+    grab(api.sandboxApi.get(), (v) => ({ sandbox: v, sandboxBase: JSON.parse(JSON.stringify(v)) }), "sandbox");
+    grab(api.modsApi.list(), (v) => ({ mods: v }), "mods");
+    grab(api.logsApi.recent(), (v) => ({ logs: v }), "logs");
+    if (role === "admin") {
+      grab(api.consoleApi.recent(), (v) => ({ consoleLines: v }), "console");
+      grab(api.activityApi.list(), (v) => ({ activity: v }), "activity");
+    }
   }
 
   /* ---------------------------------------------------------- utilities */
@@ -852,9 +925,16 @@ class Component extends DCLogic {
   }
   logActivity(text, detail) {
     if (!this.state.api) return;
+    // The audit row is written SERVER-SIDE by the action endpoint itself. This
+    // only refreshes the admin's activity view — non-admins cannot read
+    // /api/activity, so skip the refresh entirely (no guaranteed-403 calls).
+    if (!this.state.me || this.state.me.role !== "admin") return;
     this.setState({ activity: this.state.api.activityApi.record({ text, detail }) });
   }
-  go = (route) => () => this.setState({ route, menu: null });
+  // Route changes are role-guarded: a page the role cannot access falls back to
+  // the dashboard (navigation for it is hidden anyway; this also covers any
+  // direct/stale route state). The backend guards remain the real boundary.
+  go = (route) => () => this.setState((s) => ({ route: canAccessPage(route, s.me ? s.me.role : null) ? route : "dashboard", menu: null }));
   openDialog(cfg, form) { this.setState({ dialog: cfg, form: form || {}, menu: null }); }
   closeDialog = () => this.setState({ dialog: null, form: {} });
   setField = (k) => (e) => { const v = e && e.target ? (e.target.type === "checkbox" ? e.target.checked : e.target.value) : e; this.setState((s) => ({ form: { ...s.form, [k]: v } })); };
@@ -909,13 +989,22 @@ class Component extends DCLogic {
 
   /* ----------------------------------------------------- player actions */
   playerMenuItems(p) {
-    return [
-      { label: "View Details", run: () => this.setState({ detail: p.username, menu: null }) },
-      { label: "Kick Player", run: () => this.openKick(p) },
-      { label: "Ban Player", color: "#d1836e", run: () => this.openBan(p) },
-      { label: "Change Access Level", run: () => this.openAccess(p) },
-      { label: "Admin Tools", run: () => this.setState({ detail: p.username, menu: null }) },
-    ];
+    // Role-gated (mirrors backend: kick/ban = moderator; access level = admin).
+    const role = this.state.me ? this.state.me.role : null;
+    const items = [{ label: "View Details", run: () => this.setState({ detail: p.username, menu: null }) }];
+    if (role === "admin" || role === "moderator") {
+      items.push(
+        { label: "Kick Player", run: () => this.openKick(p) },
+        { label: "Ban Player", color: "#d1836e", run: () => this.openBan(p) },
+      );
+    }
+    if (role === "admin") {
+      items.push(
+        { label: "Change Access Level", run: () => this.openAccess(p) },
+        { label: "Admin Tools", run: () => this.setState({ detail: p.username, menu: null }) },
+      );
+    }
+    return items;
   }
   openKick(p) {
     this.openDialog({
@@ -1301,7 +1390,7 @@ class Component extends DCLogic {
       } else await doIt();
     };
     const danger = !!o.danger;
-    return { label, desc, action: action, run, bg: danger ? "#26160f" : "#1c1a16", border: danger ? "#573026" : "#34302a", color: danger ? "#e28c74" : "#e9e5dd" };
+    return { label, desc, action: action, run, minRole: o.minRole || "moderator", bg: danger ? "#26160f" : "#1c1a16", border: danger ? "#573026" : "#34302a", color: danger ? "#e28c74" : "#e9e5dd" };
   }
 
   /* ------------------------------------------------------------- render */
@@ -1341,10 +1430,18 @@ class Component extends DCLogic {
       mem: s.chart.map((h) => ({ h: Math.max(3, h.mem) + "%" })),
     };
 
-    const isAdmin = !!(s.me && s.me.role === "admin");
+    // Role capabilities mirror the backend guards (the real boundary):
+    //   moderate = kick/ban/save/broadcast/mod-update-check/quick-actions
+    //   admin    = lifecycle, settings/sandbox/mods/whitelist mutations,
+    //              console, users, activity, privileged player actions
+    const role = s.me ? s.me.role : null;
+    const isAdmin = role === "admin";
+    const canModerate = role === "admin" || role === "moderator";
+    // Until the user is resolved, render the least-privileged navigation.
+    const navRole = role || "readonly";
     const navGroups = NAV.map((g) => ({
       label: g.label,
-      items: g.items.filter((it) => !it.adminOnly || isAdmin).map((it) => {
+      items: g.items.filter((it) => canAccessPage(it.id, navRole)).map((it) => {
         const active = s.route === it.id;
         let badge = "", badgeColor = C.dim;
         if (it.id === "players") badge = isOnline ? String(online.length) : "";
@@ -1353,7 +1450,7 @@ class Component extends DCLogic {
         if (it.id === "sandbox" && Object.keys(s.dirtySandbox).length) { badge = "●"; badgeColor = C.amber; }
         return { label: it.label, go: this.go(it.id), current: active ? "page" : "false", bg: active ? "#221e18" : "transparent", color: active ? C.text : "#a9a29a", mark: active ? C.amber : "transparent", badge, badgeColor };
       }),
-    }));
+    })).filter((g) => g.items.length > 0);
 
     const playerRow = (p) => ({
       username: p.username, accessLevel: p.accessLevel,
@@ -1387,12 +1484,16 @@ class Component extends DCLogic {
         { label: "CHARACTER", value: [dp.character, dp.profession].filter(Boolean).join(" · ") || "—", color: C.dim },
         { label: "TOTAL PLAYTIME", value: dp.hoursPlayed != null ? dp.hoursPlayed + "h" : "Not reported", color: C.dim },
       ],
+      // Role-gated (mirrors backend: kick/ban = moderator; access level,
+      // items/XP, powers, vehicles = admin). Readonly sees facts only.
       groups: [
-        { title: "SESSION", items: [plain("Kick Player", () => this.openKick(dp)), plain("Ban Player", () => this.openBan(dp), true)] },
-        { title: "PERMISSIONS", items: [plain("Change Access Level", () => this.openAccess(dp))] },
-        { title: "CHARACTER", items: [plain("Give Item", () => this.openGive(dp, "item")), plain("Give XP", () => this.openGive(dp, "xp"))] },
-        { title: "ADMIN POWERS", items: [powerBtn(dp, "God Mode"), powerBtn(dp, "Invisible"), powerBtn(dp, "No Clip")] },
-        { title: "WORLD", items: [plain("Spawn Vehicle", () => this.openSpawnVehicle(dp)), plain("Safehouse Management", () => this.toast("info", "Safehouse management", "Opens once the backend exposes safehouse data."))] },
+        ...(canModerate ? [{ title: "SESSION", items: [plain("Kick Player", () => this.openKick(dp)), plain("Ban Player", () => this.openBan(dp), true)] }] : []),
+        ...(isAdmin ? [
+          { title: "PERMISSIONS", items: [plain("Change Access Level", () => this.openAccess(dp))] },
+          { title: "CHARACTER", items: [plain("Give Item", () => this.openGive(dp, "item")), plain("Give XP", () => this.openGive(dp, "xp"))] },
+          { title: "ADMIN POWERS", items: [powerBtn(dp, "God Mode"), powerBtn(dp, "Invisible"), powerBtn(dp, "No Clip")] },
+          { title: "WORLD", items: [plain("Spawn Vehicle", () => this.openSpawnVehicle(dp)), plain("Safehouse Management", () => this.toast("info", "Safehouse management", "Opens once the backend exposes safehouse data."))] },
+        ] : []),
       ],
     } : { open: false, facts: [], groups: [] };
 
@@ -1451,7 +1552,11 @@ class Component extends DCLogic {
       color: c.kind === "cmd" ? "#e8bf74" : c.kind === "err" ? "#e28c74" : "#b9b2a8",
     }));
 
-    const adminGroups = [
+    // Per-tool minRole mirrors the backend admin-action registry (which
+    // enforces it server-side): world events = moderator; zombies + reload =
+    // admin; save/mod-check = moderator endpoints.
+    const roleRank = { readonly: 0, moderator: 1, admin: 2 };
+    const adminGroupsAll = [
       { title: "WORLD EVENTS", tools: [
         this.adminTool("Trigger Helicopter", "Flies the event helicopter over the map, attracting zombies.", "Trigger", { confirm: true, warning: "Zombies across the map will be drawn toward players." }),
         this.adminTool("Trigger Gunshot", "Plays a distant gunshot as a meta event.", "Trigger"),
@@ -1459,15 +1564,18 @@ class Component extends DCLogic {
         this.adminTool("Sound Alarm", "Sets off a house alarm at a random building.", "Trigger"),
       ]},
       { title: "ZOMBIES", tools: [
-        this.adminTool("Create Horde", "Spawns a horde near a chosen player.", "Spawn", { confirm: true, warning: "This can kill unprepared players." }),
-        this.adminTool("Remove Zombies", "Clears all zombies currently loaded in memory.", "Remove", { danger: true, confirm: true, confirmBody: "All loaded zombies will be deleted. Population regenerates over time.", warning: "Irreversible for the current world state." }),
+        this.adminTool("Create Horde", "Spawns a horde near a chosen player.", "Spawn", { minRole: "admin", confirm: true, warning: "This can kill unprepared players." }),
+        this.adminTool("Remove Zombies", "Clears all zombies currently loaded in memory.", "Remove", { minRole: "admin", danger: true, confirm: true, confirmBody: "All loaded zombies will be deleted. Population regenerates over time.", warning: "Irreversible for the current world state." }),
       ]},
       { title: "SERVER", tools: [
-        { label: "Save World", desc: "Force an immediate world save.", action: "Save", run: this.saveWorld, bg: "#1c1a16", border: "#34302a", color: C.text },
-        { label: "Reload Server Options", desc: "Re-read the server config without a restart.", action: "Reload", run: async () => { await this.state.api.adminApi.trigger("reloadoptions"); this.toast("ok", "Server options reloaded"); this.logActivity("reloaded server options"); }, bg: "#1c1a16", border: "#34302a", color: C.text },
-        { label: "Check Mod Updates", desc: "Ask Steam whether Workshop items changed.", action: "Check", run: this.checkMods, bg: "#1c1a16", border: "#34302a", color: C.text },
+        { label: "Save World", desc: "Force an immediate world save.", action: "Save", minRole: "moderator", run: this.saveWorld, bg: "#1c1a16", border: "#34302a", color: C.text },
+        { label: "Reload Server Options", desc: "Re-read the server config without a restart.", action: "Reload", minRole: "admin", run: async () => { await this.state.api.adminApi.trigger("reloadoptions"); this.toast("ok", "Server options reloaded"); this.logActivity("reloaded server options"); }, bg: "#1c1a16", border: "#34302a", color: C.text },
+        { label: "Check Mod Updates", desc: "Ask Steam whether Workshop items changed.", action: "Check", minRole: "moderator", run: this.checkMods, bg: "#1c1a16", border: "#34302a", color: C.text },
       ]},
     ];
+    const adminGroups = adminGroupsAll
+      .map((g) => ({ ...g, tools: g.tools.filter((t) => (roleRank[role] || 0) >= roleRank[t.minRole || "moderator"]) }))
+      .filter((g) => g.tools.length > 0);
 
     const days = [];
     s.activity.forEach((a) => { let d = days.find((x) => x.day === a.day); if (!d) { d = { day: a.day.toUpperCase(), items: [] }; days.push(d); } d.items.push({ at: a.at, actor: a.actor, text: a.text, detail: a.detail || "" }); });
@@ -1492,6 +1600,9 @@ class Component extends DCLogic {
     return {
       state: { loading: s.loading && !s.error, error: !!s.error },
       ready: !s.loading && !s.error,
+      // Capability flags for template gating. Cosmetic only — the backend
+      // enforces every one of these server-side.
+      can: { admin: isAdmin, moderate: canModerate },
       srv, metrics, chart, navGroups, page: Object.fromEntries(Object.keys(TITLES).map((k) => [k, s.route === k])),
       pageTitle: TITLES[s.route], lastUpdated: ago < 2 ? "just now" : ago + "s ago",
       onlinePlayers: isOnline ? online.map(playerRow) : [],
