@@ -25,10 +25,12 @@ export interface ServerOverview {
   maxPlayers: number;
   uptimeSeconds: number;
   cpuUsage: number;
-  memoryUsed: number; // GB
-  memoryLimit: number; // GB
+  memoryUsed: number; // GB — real process memory (never the configured ceiling)
+  memoryLimit: number | null; // GB — configured max Java heap; null when unknown (never a hardcoded guess)
   version: string | null;
   ip: string;
+  /** Runtime adapter managing this server ('systemd' | 'amp' | 'standalone'). */
+  runtime: string;
 }
 
 export interface ResourcePoint {
@@ -113,7 +115,10 @@ export async function getOverview(): Promise<ServerOverview> {
     }
   }
 
-  const memLimit = toGB(metrics.memoryLimitBytes) || 4;
+  // Configured max heap from the authoritative JVM source (cmdline -Xmx or
+  // ProjectZomboid64.json, resolved by the metrics layer). Honest null when
+  // unknown — never a hardcoded fallback.
+  const memLimit = metrics.memoryLimitBytes ? toGB(metrics.memoryLimitBytes) : null;
   // Player-facing game address is derived entirely from the managed server's own
   // config (server_browser_announced_ip / DefaultPort) — never a hardcoded port.
   const announced = ini['server_browser_announced_ip'];
@@ -132,6 +137,8 @@ export async function getOverview(): Promise<ServerOverview> {
     memoryLimit: memLimit,
     version: null, // Build number is not exposed by RCON/runtime here; see docs.
     ip: port ? `${host}:${port}` : host,
+    // The frontend derives its runtime badge from this — never a hardcoded label.
+    runtime: runtime.capabilities().runtime,
   };
 }
 

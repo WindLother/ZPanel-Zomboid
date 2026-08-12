@@ -1,6 +1,7 @@
 // Real API adapter. Drop-in replacement for mockApi.js: it exposes the SAME
 // logical services (serverApi, playersApi, …) but every call performs an HTTP
-// request to the ZPanel backend, which aggregates AMP + RCON + PZ files.
+// request to the ZPanel backend, which aggregates the server runtime
+// (systemd/AMP/standalone) + RCON + PZ files.
 //
 // Design rules honored here:
 //   * one clean transport abstraction (http) — no fetch() scattered in the UI
@@ -335,8 +336,9 @@ export const modsApi = {
     return { checked: 0, outdated: r.findings ? r.findings.length : 0, message: r.message };
   },
   async updateAll() {
-    // Content updates go through the AMP-backed server update, not a parallel
-    // SteamCMD. Return the current list unchanged.
+    // Content updates go through the runtime's server-update path (when the
+    // runtime supports updates), not a parallel SteamCMD. Return the current
+    // list unchanged.
     await post("/api/mods/update", {}).catch(() => {});
     return get("/api/mods");
   },

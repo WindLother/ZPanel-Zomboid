@@ -63,7 +63,7 @@ input,select,textarea{font-family:inherit}
 </sc-if>
 <div style="padding:12px 18px;border-top:1px solid #26231e;font:400 10px/1.5 'IBM Plex Mono',monospace;color:#57524b">
 <div>BUILD {{ srv.version }}</div>
-<div>AMP · RCON · FILES</div>
+<div>{{ srv.runtimeTag }}</div>
 </div>
 </aside>
 
@@ -750,7 +750,7 @@ const STATUS_META = {
   stopping: { label: "STOPPING", color: C.warn, pulse: true, text: "Stopping the server process. Players have been disconnected." },
   restarting: { label: "RESTARTING", color: C.amber, pulse: true, text: "Restarting — the world was saved before shutdown." },
   updating: { label: "UPDATING", color: C.blue, pulse: true, text: "Applying Steam Workshop and build updates." },
-  unreachable: { label: "UNREACHABLE", color: C.red, pulse: true, text: "The panel backend cannot reach AMP or RCON. Last known values shown." },
+  unreachable: { label: "UNREACHABLE", color: C.red, pulse: true, text: "The panel backend cannot reach the server runtime or RCON. Last known values shown." },
 };
 const NAV = [
   { label: "OVERVIEW", items: [{ id: "dashboard", label: "Dashboard" }] },
@@ -1307,27 +1307,33 @@ class Component extends DCLogic {
   /* ------------------------------------------------------------- render */
   renderVals() {
     const s = this.state;
-    const srvRaw = s.srv || { name: "—", subtitle: "Project Zomboid Dedicated Server", status: this.props.serverState || "offline", playersOnline: 0, maxPlayers: 0, uptimeSeconds: 0, cpuUsage: 0, memoryUsed: 0, memoryLimit: 4, version: null, ip: "—" };
+    const srvRaw = s.srv || { name: "—", subtitle: "Project Zomboid Dedicated Server", status: this.props.serverState || "offline", playersOnline: 0, maxPlayers: 0, uptimeSeconds: 0, cpuUsage: 0, memoryUsed: 0, memoryLimit: null, version: null, ip: "—", runtime: null };
     const meta = STATUS_META[srvRaw.status] || STATUS_META.online;
     const isOnline = srvRaw.status === "online";
     const transitional = ["starting", "stopping", "restarting", "updating", "unreachable"].includes(srvRaw.status);
     const online = s.players.filter((p) => p.online);
-    const memPct = Math.round((srvRaw.memoryUsed / srvRaw.memoryLimit) * 100);
+    // memoryLimit is the backend-derived configured heap (null when unknown) —
+    // never a hardcoded number here.
+    const memLimit = srvRaw.memoryLimit;
+    const memPct = memLimit ? Math.round((srvRaw.memoryUsed / memLimit) * 100) : 0;
     const ago = Math.max(0, Math.round((s.now - s.updatedAt) / 1000));
+    // Runtime badge derives from the backend runtime name ('systemd'/'amp'/...).
+    const rtName = (srvRaw.runtime || "").toUpperCase();
 
     const srv = {
       name: srvRaw.name, subtitle: srvRaw.subtitle, ip: srvRaw.ip, version: srvRaw.version || "—",
       statusLabel: meta.label, dotColor: meta.color, dotAnim: meta.pulse ? "pz-pulse 1.4s ease-in-out infinite" : "none",
       isOnline, isOffline: srvRaw.status === "offline", notOnline: !isOnline, transitional, transitionalText: meta.text || "",
-      cpu: srvRaw.cpuUsage + "%", memText: srvRaw.memoryUsed.toFixed(1) + " / " + srvRaw.memoryLimit + " GB",
+      cpu: srvRaw.cpuUsage + "%", memText: srvRaw.memoryUsed.toFixed(1) + " / " + (memLimit != null ? memLimit + " GB" : "—"),
       playerCount: (isOnline ? online.length : 0) + " / " + srvRaw.maxPlayers,
-      sourceLabel: transitional ? "AMP PROCESS" : "AMP + RCON",
+      sourceLabel: transitional ? (rtName ? rtName + " PROCESS" : "SERVER PROCESS") : (rtName ? rtName + " + RCON" : "RCON"),
+      runtimeTag: (rtName ? rtName + " · " : "") + "RCON · FILES",
     };
     const metrics = [
       { label: "PLAYERS", value: srv.playerCount, pct: Math.round(((isOnline ? online.length : 0) / srvRaw.maxPlayers) * 100) + "%", color: C.amber, note: isOnline ? "slots in use" : "server offline" },
       { label: "UPTIME", value: isOnline ? fmtUptime(srvRaw.uptimeSeconds) : "—", pct: isOnline ? "100%" : "0%", color: isOnline ? C.green : "#7a736a", note: isOnline ? "since last restart" : "not running" },
       { label: "CPU", value: srvRaw.cpuUsage + "%", pct: srvRaw.cpuUsage + "%", color: srvRaw.cpuUsage > 80 ? C.red : C.amber, note: "of allocated cores" },
-      { label: "MEMORY", value: srvRaw.memoryUsed.toFixed(1) + " GB", pct: memPct + "%", color: memPct > 88 ? C.red : C.green, note: "of " + srvRaw.memoryLimit + " GB limit" },
+      { label: "MEMORY", value: srvRaw.memoryUsed.toFixed(1) + " GB", pct: memPct + "%", color: memPct > 88 ? C.red : C.green, note: memLimit != null ? "of " + memLimit + " GB limit" : "limit unknown" },
     ];
     const maxCpu = 100;
     const chart = {

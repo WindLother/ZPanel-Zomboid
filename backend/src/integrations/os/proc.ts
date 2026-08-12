@@ -1,13 +1,15 @@
 import fsp from 'node:fs/promises';
 import { env } from '../../config/env';
 import { logger } from '../../shared/logger';
+import { configuredHeapBytes } from '../zomboid-files/jvm-config';
 import type { RuntimeState } from '../runtime/types';
 
 /**
  * OS-level observation of the Project Zomboid process via /proc. This is neutral
  * infrastructure — NOT AMP-specific — used by any runtime adapter that wants
- * process metrics without a management API. It only READS /proc; it never
- * kills or spawns the process.
+ * process metrics without a management API. It only READS /proc (plus the PZ
+ * launcher config for the configured heap ceiling); it never kills or spawns
+ * the process.
  */
 
 const CLK_TCK = 100; // sysconf(_SC_CLK_TCK) is 100 on Linux by default.
@@ -52,8 +54,12 @@ export async function findPzPid(): Promise<number | null> {
 }
 
 /**
- * Best-effort memory ceiling. Parsed from the process's own `-Xmx` argument when
- * present (so it adapts to the real launch config), else null.
+ * Configured max Java heap. Resolution order:
+ *   1. the process's own `-Xmx` cmdline argument (AMP-style `java ...` launches
+ *      carry it — this reflects the actually-running process);
+ *   2. the authoritative launcher config ProjectZomboid64.json (launcher-style
+ *      processes read `-Xmx` from there, so it never appears in their cmdline).
+ * Honest null when neither source has it — never a hardcoded guess.
  */
 async function xmxLimitBytes(pid: number): Promise<number | null> {
   try {
@@ -67,7 +73,7 @@ async function xmxLimitBytes(pid: number): Promise<number | null> {
   } catch {
     /* ignore */
   }
-  return null;
+  return configuredHeapBytes();
 }
 
 /** Sample process state + metrics from the OS. `state` derives from presence. */
@@ -99,9 +105,22 @@ export async function sampleProcess(): Promise<ProcSample> {
     const uptimeSys = parseFloat((await fsp.readFile('/proc/uptime', 'utf8')).split(' ')[0]);
     uptimeSeconds = Math.max(0, Math.round(uptimeSys - starttime / CLK_TCK));
 
-    const status = await fsp.readFile(`/proc/${pid}/status`, 'utf8');
-    const vm = status.match(/VmRSS:\s*(\d+)\s*kB/);
-    if (vm) memoryBytes = parseInt(vm[1], 10) * 1024;
+    // Real physical usage. Prefer PSS (smaps_rollup): PZ Build 42 runs ZGC,
+    // which multi-maps the heap, so plain VmRSS can multi-count those pages.
+    // PSS attributes each physical page once. Fall back to VmRSS when
+    // smaps_rollup is unavailable. Never report the heap ceiling as usage.
+    try {
+      const rollup = await fsp.readFile(`/proc/${pid}/smaps_rollup`, 'utf8');
+      const pss = rollup.match(/^Pss:\s*(\d+)\s*kB/m);
+      if (pss) memoryBytes = parseInt(pss[1], 10) * 1024;
+    } catch {
+      /* smaps_rollup unavailable; use VmRSS below */
+    }
+    if (memoryBytes == null) {
+      const status = await fsp.readFile(`/proc/${pid}/status`, 'utf8');
+      const vm = status.match(/VmRSS:\s*(\d+)\s*kB/);
+      if (vm) memoryBytes = parseInt(vm[1], 10) * 1024;
+    }
   } catch (e) {
     logger.debug({ err: (e as Error).message }, 'proc metrics read failed');
   }

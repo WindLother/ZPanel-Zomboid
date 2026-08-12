@@ -12,6 +12,12 @@ const zomboidDir = env.PZ_ZOMBOID_DIR;
 // The Project Zomboid install root is the parent of the Zomboid data dir
 // (e.g. .../380870). SteamCMD downloads Workshop content beneath it.
 const installBase = path.dirname(zomboidDir);
+// The server INSTALL dir (holds ProjectZomboid64.json + steamapps/). Explicit
+// via PZ_INSTALL_DIR, else derived: the Workshop content dir always sits at
+// <install>/steamapps/workshop/content/108600, else fall back to installBase.
+const installDir =
+  env.PZ_INSTALL_DIR ||
+  (env.PZ_WORKSHOP_DIR ? path.resolve(env.PZ_WORKSHOP_DIR, '..', '..', '..', '..') : installBase);
 
 export const paths = {
   serverName: name,
@@ -40,6 +46,10 @@ export const paths = {
   workshopContentDir: env.PZ_WORKSHOP_DIR || path.join(installBase, 'steamapps', 'workshop', 'content', '108600'),
   zomboidWorkshopDir: path.join(zomboidDir, 'Workshop'),
   localModsDir: path.join(zomboidDir, 'mods'),
+
+  /** PZ server install dir and its authoritative JVM launcher config (read-only). */
+  pzInstallDir: installDir,
+  pzJvmConfig: path.join(installDir, 'ProjectZomboid64.json'),
 } as const;
 
 export type Paths = typeof paths;

@@ -109,7 +109,8 @@ ZPanel/                               <- repo root
     │   │   ├── os/proc.ts            <- PZ process discovery + /proc metrics (§7)
     │   │   ├── rcon/                 <- client, command builders, parsers, mutation semantics (§11)
     │   │   ├── zomboid-files/        <- ini/sandbox read+patch, backups+atomic write,
-    │   │   │                            mod.info discovery, workshop scanning (§8)
+    │   │   │                            mod.info discovery, workshop scanning,
+    │   │   │                            JVM heap config (ProjectZomboid64.json) (§7, §8)
     │   │   ├── zomboid-db/players.ts <- READ-ONLY queries on db/<name>.db (whitelist, accounts)
     │   │   └── logs/tail.ts          <- DebugLog tailing/parsing for the SSE stream
     │   │
@@ -239,9 +240,19 @@ Rules:
   command line. This is what keeps two coexisting PZ servers from
   cross-matching. Never loosen this to "any java process".
 - CPU% is computed from utime+stime deltas between samples (first sample after
-  a pid change yields `null`); memory is `VmRSS`; the memory ceiling is parsed
-  from the process's own `-Xmx` argument when present, else `null`; uptime
-  derives from `/proc/<pid>/stat` starttime.
+  a pid change yields `null`); uptime derives from `/proc/<pid>/stat` starttime.
+- Memory **usage** prefers `Pss` from `smaps_rollup` (PZ Build 42 runs ZGC,
+  which multi-maps the heap, so plain `VmRSS` can multi-count those pages),
+  falling back to `VmRSS`. Usage is never the heap ceiling.
+- The memory **ceiling** (dashboard "of N GB limit") resolves: the process's
+  own cmdline `-Xmx` (AMP-style `java` launches carry it) → the authoritative
+  launcher config `ProjectZomboid64.json` in `paths.pzInstallDir`
+  (launcher-style processes read `-Xmx` from there; see
+  `zomboid-files/jvm-config.ts`) → `null`. **Never a hardcoded fallback** —
+  `test/jvm-config.test.ts` + `test/runtime-label.test.ts` guard this.
+- The overview's `runtime` field (from `runtime.capabilities().runtime`) drives
+  the frontend's runtime badge (`SYSTEMD + RCON`, `AMP + RCON`, …). Labels are
+  derived, never hardcoded per-runtime in the frontend.
 - `/proc` is **read-only** observation. This module never signals, kills, or
   spawns anything.
 - Missing data stays `null` — do not substitute zeros or estimates (except
@@ -256,6 +267,8 @@ Rules:
   - `<zomboidDir>/db/<name>.db` — **read-only** (whitelist/accounts queries).
   - `<zomboidDir>/Logs/` — read-only (log tailing).
   - Workshop/local mod dirs — read-only (mod.info discovery).
+  - `<installDir>/ProjectZomboid64.json` — **read-only** (configured JVM heap;
+    the panel reports it, it does not manage it).
   - `<serverDir>/.zpanel-backups/` — the only panel-owned write location
     besides the two config files and the panel data dir.
 - Every config mutation goes through `zomboid-files/backups.ts`:

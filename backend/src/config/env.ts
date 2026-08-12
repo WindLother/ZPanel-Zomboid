@@ -50,6 +50,10 @@ const EnvSchema = z.object({
   // when the server install is separate from the Zomboid data dir (standalone
   // layout). Falls back to a path derived from PZ_ZOMBOID_DIR when unset.
   PZ_WORKSHOP_DIR: z.string().optional(),
+  // Optional override for the PZ server install dir (the one holding
+  // ProjectZomboid64.json + steamapps/). Used to read the authoritative
+  // configured JVM heap. Derived from PZ_WORKSHOP_DIR / PZ_ZOMBOID_DIR if unset.
+  PZ_INSTALL_DIR: z.string().optional(),
 
   PZ_RCON_HOST: z.string().default('127.0.0.1'),
   PZ_RCON_PORT: z.coerce.number().int().positive().default(27015),

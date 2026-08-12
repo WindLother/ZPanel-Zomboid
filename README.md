@@ -191,6 +191,7 @@ template. **Never commit a real `.env`.**
 | `PZ_SERVER_DIR` | yes | Directory containing `<name>.ini` / `<name>_SandboxVars.lua` | `/srv/project-zomboid/data/Zomboid/Server` |
 | `PZ_ZOMBOID_DIR` | no (derived) | Zomboid data root (parent of `Server/`, `Logs/`, `db/`) | `/srv/project-zomboid/data/Zomboid` |
 | `PZ_WORKSHOP_DIR` | no (derived) | Steam Workshop content dir (`.../workshop/content/108600`) when separate from the data root | `/srv/project-zomboid/server/steamapps/workshop/content/108600` |
+| `PZ_INSTALL_DIR` | no (derived) | PZ server install dir holding `ProjectZomboid64.json` — used to read the configured JVM heap for the dashboard | `/srv/project-zomboid/server` |
 | `PZ_RCON_HOST` | no (default `127.0.0.1`) | RCON host — keep local | `127.0.0.1` |
 | `PZ_RCON_PORT` | no (default `27015`) | RCON TCP port (`RCONPort` in the ini) | `27115` |
 | `PZ_RCON_PASSWORD` | yes in practice | RCON password (`RCONPassword` in the ini) | `<strong-secret>` |
@@ -217,7 +218,10 @@ durable server settings ✔. Start/stop/restart run
 `sudo systemctl <verb> <unit>` with a hard-coded verb allowlist — the unit name
 and verbs are server configuration, never request input. Status comes from
 `systemctl is-active`; CPU/memory/uptime come from `/proc` sampling of the PZ
-process (matched by server name, never "any Java process").
+process (matched by server name, never "any Java process"). The dashboard's
+memory limit is the real configured Java heap, read from the process command
+line or the authoritative `ProjectZomboid64.json` (`PZ_INSTALL_DIR`) — shown as
+unknown when neither source has it, never guessed.
 
 ### `amp` (optional)
 
