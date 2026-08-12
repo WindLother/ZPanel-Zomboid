@@ -131,9 +131,9 @@ input,select,textarea{font-family:inherit}
 <sc-if value="{{ srv.isOnline }}" hint-placeholder-val="{{ true }}">
 <sc-if value="{{ can.moderate }}">
 <button type="button" onClick="{{ actions.save }}" style="padding:9px 14px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#e9e5dd;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Save World</button>
+<button type="button" onClick="{{ actions.openRestart }}" style="padding:9px 14px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Restart</button>
 </sc-if>
 <sc-if value="{{ can.admin }}">
-<button type="button" onClick="{{ actions.openRestart }}" style="padding:9px 14px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Restart</button>
 <button type="button" onClick="{{ actions.openStop }}" style="padding:9px 14px;border:1px solid #573026;border-radius:5px;background:#26160f;color:#e28c74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#331a12">Stop Server</button>
 </sc-if>
 </sc-if>

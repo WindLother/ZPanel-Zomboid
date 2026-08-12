@@ -97,15 +97,23 @@ describe('PAGE_ACCESS: navigation + direct-route protection mirror backend guard
 });
 
 describe('role-gated controls (cosmetic mirror of backend authz)', () => {
-  it('lifecycle buttons (start/stop/restart) render only for admin', () => {
-    for (const action of ['actions.openRestart', 'actions.openStop', 'actions.start ']) {
+  it('start/stop render only for admin (they leave the server down)', () => {
+    for (const action of ['actions.openStop', 'actions.start ']) {
       const idx = html.indexOf(action);
       expect(idx).toBeGreaterThan(-1);
       const before = html.lastIndexOf('<sc-if value="{{ can.admin }}">', idx);
       const gap = html.slice(before, idx);
       expect(before, `${action} must sit inside a can.admin gate`).toBeGreaterThan(-1);
-      expect(gap).not.toContain('</sc-if></sc-if>'); // gate not closed before the button
+      expect(gap).not.toContain('</sc-if>'); // gate not closed before the button
     }
+  });
+
+  it('restart renders for moderator+ (backend allows moderator)', () => {
+    const idx = html.indexOf('actions.openRestart');
+    expect(idx).toBeGreaterThan(-1);
+    const gate = html.lastIndexOf('<sc-if value="{{ can.moderate }}">', idx);
+    expect(gate, 'restart must sit inside a can.moderate gate').toBeGreaterThan(-1);
+    expect(html.slice(gate, idx)).not.toContain('</sc-if>');
   });
 
   it('save/broadcast render for moderator+ (backend allows moderator)', () => {

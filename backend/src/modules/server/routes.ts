@@ -40,7 +40,10 @@ export async function serverRoutes(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
-  app.post('/api/server/restart', { preHandler: requireRole('admin') }, async (req) => {
+  // Restart (immediate or scheduled) is a MODERATOR operation: it brings the
+  // server back on its own. Start/stop/update remain admin-only because they
+  // leave the server down (or change installed content).
+  app.post('/api/server/restart', { preHandler: requireRole('moderator') }, async (req) => {
     const body = restartBody.parse(req.body ?? {});
     if (body.delayMinutes > 0) {
       const op = lifecycle.scheduleRestart(actor(req), body.delayMinutes, body.broadcast);
@@ -57,7 +60,9 @@ export async function serverRoutes(app: FastifyInstance): Promise<void> {
 
   app.get('/api/server/scheduled', { preHandler: requireAuth }, async () => lifecycle.listScheduled());
 
-  app.delete('/api/server/scheduled/:id', { preHandler: requireRole('admin') }, async (req) => {
+  // Moderators can schedule a delayed restart, so they must be able to cancel
+  // the countdown they started.
+  app.delete('/api/server/scheduled/:id', { preHandler: requireRole('moderator') }, async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);
     const ok = lifecycle.cancelScheduled(id);
     if (ok) audit.record({ ...actor(req), action: 'server.restart.cancel', target: id, success: true });

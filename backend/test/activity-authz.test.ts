@@ -78,6 +78,38 @@ describe('GET /api/activity authorization matrix', () => {
   });
 });
 
+// Lifecycle split: restart (self-recovering) is a moderator operation; start/
+// stop/update leave the server down or change content, so they stay admin-only.
+describe('server lifecycle authorization matrix', () => {
+  it('moderator may schedule/cancel a restart but NOT start/stop/update', async () => {
+    const { cookie, csrf } = await login('mod1', PW.mod);
+    // A delayed restart only schedules an op — it does not touch the live server.
+    const scheduled = await inject('POST', '/api/server/restart', { cookie, csrf, payload: { delayMinutes: 5 } });
+    expect(scheduled.statusCode).toBe(200);
+    const id = scheduled.json().scheduled?.id as string;
+    expect(id).toBeTruthy();
+    expect((await inject('DELETE', `/api/server/scheduled/${id}`, { cookie, csrf })).statusCode).toBe(200);
+
+    for (const url of ['/api/server/start', '/api/server/stop', '/api/server/update']) {
+      expect((await inject('POST', url, { cookie, csrf, payload: {} })).statusCode, url).toBe(403);
+    }
+  });
+
+  it('readonly may not restart, and unauthenticated is rejected', async () => {
+    const ro = await login('ro1', PW.ro);
+    expect((await inject('POST', '/api/server/restart', { cookie: ro.cookie, csrf: ro.csrf, payload: { delayMinutes: 5 } })).statusCode).toBe(403);
+    expect([401, 403]).toContain((await inject('POST', '/api/server/restart', { payload: { delayMinutes: 5 } })).statusCode);
+  });
+
+  it('admin retains full lifecycle access (restart scheduling still works)', async () => {
+    const { cookie, csrf } = await login('boss', PW.admin);
+    const res = await inject('POST', '/api/server/restart', { cookie, csrf, payload: { delayMinutes: 5 } });
+    expect(res.statusCode).toBe(200);
+    const id = res.json().scheduled?.id as string;
+    expect((await inject('DELETE', `/api/server/scheduled/${id}`, { cookie, csrf })).statusCode).toBe(200);
+  });
+});
+
 describe('moderator actions are still AUDITED (view-restriction never disables recording)', () => {
   it('an event recorded for a moderator actor is visible to the admin via the API', async () => {
     // audit.record is exactly what moderator-permitted routes (kick/ban/save/
