@@ -111,6 +111,7 @@ ZPanel/                               <- repo root
     │   │   ├── zomboid-files/        <- ini/sandbox read+patch, backups+atomic write,
     │   │   │                            mod.info discovery, workshop scanning,
     │   │   │                            JVM heap config (ProjectZomboid64.json) (§7, §8)
+    │   │   │                            sandbox.ts = safe Lua cursor parser (§8b)
     │   │   ├── zomboid-db/players.ts <- READ-ONLY queries on db/<name>.db (whitelist, accounts)
     │   │   └── logs/tail.ts          <- DebugLog tailing/parsing for the SSE stream
     │   │
@@ -121,7 +122,8 @@ ZPanel/                               <- repo root
     │       ├── players/              <- online players + moderation, confirm-after-mutate
     │       ├── whitelist/            <- PZ whitelist via RCON + DB confirmation (§10, §11)
     │       ├── settings/             <- schema-driven <name>.ini editor (allowlist of keys)
-    │       ├── sandbox/              <- <name>_SandboxVars.lua editor
+    │       ├── sandbox/              <- <name>_SandboxVars.lua editor: schema.generated.ts
+    │       │                            (GENERATED, §8b) + categories.ts + types.ts
     │       ├── mods/                 <- Workshop/Mods model + associations store (§9)
     │       ├── console/              <- RCON console behind a strict command allowlist
     │       ├── admin/                <- fixed action registry (browser sends ids only)
@@ -282,6 +284,40 @@ Rules:
 - ACL assumption in production: the panel user has rw on exactly the two config
   files (+ backups dir), read elsewhere. Code must tolerate EACCES with a clean
   `CONFIG_WRITE_FAILED`/forbidden error, not crash.
+
+## 8b. Sandbox settings (Build 42)
+
+- **Schema location & provenance.** `src/modules/sandbox/schema.generated.ts` is
+  GENERATED — do not hand-edit. `scripts/generate-sandbox-schema.ts` parses a
+  server-generated `*_SandboxVars.lua` and lifts PZ's own metadata out of its
+  `--` comments: description, `Min: x Max: y Default: z`, the numeric enum
+  legend (`-- 1 = Insane`), and the `<BHC> [!] … [!] <RGB:…>` advisory markup.
+  UI grouping/labels live in the hand-maintained `categories.ts`. Regenerate
+  after a PZ update and review the diff. Currently **269 vanilla fields**.
+- **Never execute Lua to read or write config.** No `eval`, `new Function`,
+  `loadstring`, or a Lua VM — the parser is a hand-written cursor
+  (`integrations/zomboid-files/sandbox.ts`) and the writer splices only the
+  changed value literals.
+- **A schema `default` is NOT the live value.** Defaults are informational.
+  Displayed values come solely from the server's own SandboxVars.lua, and a
+  field absent from that file is never displayed and never introduced —
+  absence means "PZ's own default behavior".
+- **Never regenerate SandboxVars from known fields.** A save must patch in
+  place. Unknown vanilla options, future options, comments, formatting and
+  mod-added sections (e.g. `DAMN = { … }`) must survive byte-for-byte. The
+  round-trip tests assert this against a real Build 42 fixture.
+- **Nested paths are authoritative.** `ZombieLore.Speed` addresses
+  `ZombieLore = { Speed = … }` — never a literal dotted key in the file. The
+  parser recurses to arbitrary depth; do not add per-table special cases.
+- **Preserve Lua types**: bare `true`/`false` (never `"true"`), floats keep
+  their float spelling (`2.0`), ints stay bare, empty strings stay `""` (never
+  null).
+- **Enum values are explicit `{value,label}` pairs**, not index positions, so a
+  non-contiguous legend keeps mapping correctly.
+- **Backend bounds are authoritative**: PZ's own Min/Max (and int-ness) are
+  enforced server-side, so a request that bypasses the UI is rejected.
+- Any schema, parser, or writer change REQUIRES updated round-trip +
+  preservation tests (`test/sandbox-b42.test.ts`).
 
 ## 9. Mods engineering model (get this right)
 

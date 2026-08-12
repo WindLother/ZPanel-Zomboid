@@ -4,8 +4,15 @@ import { roleToFrontendLevel, frontendLevelToRconArg } from '../src/modules/play
 import { operationLock } from '../src/shared/lock';
 
 describe('sandbox enum mapping', () => {
-  const SPEED = ['Sprinters', 'Fast Shamblers', 'Shamblers', 'Random'] as const;
-  it('maps raw value -> label (1-based)', () => {
+  // Explicit {value,label} pairs (as generated from PZ's own legend comments) —
+  // never an index-position assumption.
+  const SPEED = [
+    { value: 1, label: 'Sprinters' },
+    { value: 2, label: 'Fast Shamblers' },
+    { value: 3, label: 'Shamblers' },
+    { value: 4, label: 'Random' },
+  ] as const;
+  it('maps raw value -> label', () => {
     expect(enumToLabel(SPEED, 1)).toBe('Sprinters');
     expect(enumToLabel(SPEED, 4)).toBe('Random');
   });
@@ -14,6 +21,14 @@ describe('sandbox enum mapping', () => {
   });
   it('rejects unknown labels', () => {
     expect(() => labelToEnum(SPEED, 'Nope')).toThrow();
+  });
+  it('honours non-contiguous enum values instead of assuming index+1', () => {
+    const SPARSE = [
+      { value: 2, label: 'Zombies only' },
+      { value: 3, label: 'All types of target' },
+    ] as const;
+    expect(enumToLabel(SPARSE, 2)).toBe('Zombies only');
+    expect(labelToEnum(SPARSE, 'All types of target')).toBe(3);
   });
 });
 

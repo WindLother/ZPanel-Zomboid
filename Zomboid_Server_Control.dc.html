@@ -387,6 +387,8 @@ input,select,textarea{font-family:inherit}
 </div>
 <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #26231e;border-radius:7px;background:#161410">
 <span style="display:flex;align-items:center;gap:8px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ sandboxDirty.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ sandboxDirty.color }}"></span>{{ sandboxDirty.text }}</span>
+<span style="font:400 10.5px/1.4 'IBM Plex Mono',monospace;color:#d3922f">⚠ REQUIRES SERVER RESTART</span>
+<span style="font:400 11px/1.45 'IBM Plex Sans',sans-serif;color:#6b655d">Saved values are written to SandboxVars.lua; Project Zomboid reads them at startup.</span>
 <sc-if value="{{ can.admin }}">
 <button type="button" onClick="{{ actions.saveSandbox }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save Changes</button>
 <button type="button" onClick="{{ actions.discardSandbox }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Discard</button>
@@ -412,10 +414,14 @@ input,select,textarea{font-family:inherit}
 <div style="display:grid;grid-template-columns:minmax(200px,1fr) minmax(190px,270px);gap:22px;align-items:center;padding:13px 0;border-bottom:1px solid #201d18">
 <div style="display:flex;flex-direction:column;gap:4px">
 <label for="{{ f.id }}" style="font:500 13.5px 'IBM Plex Sans',sans-serif;color:#e9e5dd;display:flex;align-items:center;gap:7px">{{ f.label }}<span style="font:500 10px 'IBM Plex Mono',monospace;color:#d9a44c">{{ f.dirtyMark }}</span></label>
+<span style="font:400 11px 'IBM Plex Mono',monospace;color:#57524b">{{ f.key }}</span>
 <span style="font:400 12px/1.45 'IBM Plex Sans',sans-serif;color:#8a837a">{{ f.desc }}</span>
+<sc-if value="{{ f.hasWarning }}">
+<span style="display:block;margin-top:2px;padding:7px 9px;border:1px solid #5a4520;border-left-width:3px;border-radius:4px;background:#221a0e;font:400 11.5px/1.45 'IBM Plex Sans',sans-serif;color:#e8bf74"><strong style="font-weight:600">Not recommended — </strong>{{ f.warning }}</span>
+</sc-if>
 </div>
 <div style="display:flex;justify-content:flex-end;align-items:center;gap:9px">
-<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">{{ f.unit }}</span>
+<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">{{ f.rangeHint }}</span>
 <sc-if value="{{ f.isToggle }}">
 <button type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-pressed="{{ f.value }}" style="display:flex;align-items:center;gap:9px;padding:6px 11px 6px 8px;border:1px solid {{ f.toggleBorder }};border-radius:5px;background:{{ f.toggleBg }};color:{{ f.toggleColor }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer;min-width:118px">
 <span style="width:26px;height:14px;border-radius:8px;background:{{ f.trackBg }};display:inline-flex;align-items:center;padding:2px;justify-content:{{ f.knobPos }}"><span style="width:10px;height:10px;border-radius:50%;background:{{ f.knobBg }}"></span></span>{{ f.toggleLabel }}</button>
@@ -426,7 +432,7 @@ input,select,textarea{font-family:inherit}
 </select>
 </sc-if>
 <sc-if value="{{ f.isNumber }}">
-<input id="{{ f.id }}" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}" step="{{ f.step }}" style="width:120px;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Mono',monospace;text-align:right">
+<input id="{{ f.id }}" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}" step="{{ f.step }}" min="{{ f.min }}" max="{{ f.max }}" style="width:120px;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Mono',monospace;text-align:right">
 </sc-if>
 </div>
 </div>
@@ -1115,22 +1121,46 @@ class Component extends DCLogic {
     this.logActivity("updated server settings", changed + " value(s) changed");
   };
   discardSettings = () => this.setState((s) => ({ settings: JSON.parse(JSON.stringify(s.settingsBase)), dirtySettings: {} }));
+  /**
+   * Loaded-value lookup by sandbox PATH (e.g. "ZombieLore.Speed"). Dirty state
+   * is keyed by path, never by array position, so it survives category/section
+   * ordering and search filtering. Cached per loaded snapshot (hundreds of
+   * fields; rebuilt only when the baseline itself changes).
+   */
+  sandboxBaseMap(base) {
+    if (this._sbBaseFor !== base) {
+      const m = new Map();
+      for (const c of base || []) for (const sec of c.sections || []) for (const f of sec.fields || []) m.set(f.key, f.value);
+      this._sbBaseFor = base; this._sbBaseMap = m;
+    }
+    return this._sbBaseMap;
+  }
   editSandbox = (ci, si, fi) => (val) => {
     this.setState((s) => {
+      const key = s.sandbox[ci].sections[si].fields[fi].key;
       const sandbox = s.sandbox.map((c, a) => a !== ci ? c : { ...c, sections: c.sections.map((sec, b) => b !== si ? sec : { ...sec, fields: sec.fields.map((f, d) => d !== fi ? f : { ...f, value: val }) }) });
-      const base = s.sandboxBase[ci].sections[si].fields[fi].value;
-      const dirty = { ...s.dirtySandbox }; const k = ci + ":" + si + ":" + fi;
-      if (String(base) === String(val)) delete dirty[k]; else dirty[k] = true;
+      const base = this.sandboxBaseMap(s.sandboxBase).get(key);
+      const dirty = { ...s.dirtySandbox };
+      if (String(base) === String(val)) delete dirty[key]; else dirty[key] = true;
       return { sandbox, dirtySandbox: dirty };
     });
   };
   saveSandbox = async () => {
-    const n = Object.keys(this.state.dirtySandbox).length;
-    if (!n) { this.toast("info", "Nothing to save"); return; }
-    await this.state.api.sandboxApi.save(this.state.sandbox);
-    this.setState({ sandboxBase: JSON.parse(JSON.stringify(this.state.sandbox)), dirtySandbox: {} });
-    this.toast("ok", "Sandbox settings updated", n + " value(s) saved · applies on next restart");
-    this.logActivity("updated sandbox settings", n + " value(s) changed");
+    const dirty = Object.keys(this.state.dirtySandbox);
+    if (!dirty.length) { this.toast("info", "Nothing to save"); return; }
+    // Send ONLY the changed paths ({ "ZombieLore.Speed": "Shamblers" }); the
+    // backend patches exactly those values and leaves the rest of the file alone.
+    const changed = {};
+    for (const c of this.state.sandbox) for (const sec of c.sections) for (const f of sec.fields) {
+      if (this.state.dirtySandbox[f.key]) changed[f.key] = f.value;
+    }
+    let res;
+    try { res = await this.state.api.sandboxApi.save(changed); }
+    catch (e) { this.toast("err", "Could not save sandbox settings", (e && e.message) || ""); return; }
+    const cats = Array.isArray(res) ? res : (res && res.categories) || this.state.sandbox;
+    this.setState({ sandbox: cats, sandboxBase: JSON.parse(JSON.stringify(cats)), dirtySandbox: {} });
+    this.toast("ok", "Sandbox settings saved", dirty.length + " value(s) written · restart the server to apply");
+    this.logActivity("updated sandbox settings", dirty.length + " value(s) changed");
   };
   discardSandbox = () => this.setState((s) => ({ sandbox: JSON.parse(JSON.stringify(s.sandboxBase)), dirtySandbox: {} }));
 
@@ -1141,6 +1171,9 @@ class Component extends DCLogic {
       ...f, id, dirtyMark: dirty ? "MODIFIED" : "",
       desc: f.desc || "", unit: f.unit ? f.unit.toUpperCase() : "", step: f.step || 1,
       placeholder: f.secret ? "not set" : "",
+      // Project Zomboid's own "not recommended" advisory, shown prominently.
+      warning: f.warning || "", hasWarning: !!f.warning,
+      rangeHint: f.min != null && f.max != null ? "MIN " + f.min + " · MAX " + f.max : "",
       isToggle, isSelect: f.type === "select", isNumber: f.type === "number", isText: f.type === "text", isTextarea: f.type === "textarea",
       value: isToggle ? on : f.value,
       toggle: () => onChange(!on),
@@ -1506,12 +1539,12 @@ class Component extends DCLogic {
     if (sq) {
       s.sandbox.forEach((c, ci) => c.sections.forEach((sec, si) => {
         const fields = sec.fields.map((f, fi) => ({ f, fi })).filter(({ f }) => f.label.toLowerCase().includes(sq) || (f.desc || "").toLowerCase().includes(sq) || f.key.toLowerCase().includes(sq));
-        if (fields.length) sandboxSections.push({ title: sec.title.toUpperCase(), cat: c.name.toUpperCase(), fields: fields.map(({ f, fi }) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[ci + ":" + si + ":" + fi])) });
+        if (fields.length) sandboxSections.push({ title: sec.title.toUpperCase(), cat: c.name.toUpperCase(), fields: fields.map(({ f, fi }) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[f.key])) });
       }));
     } else {
       const ci = Math.max(0, s.sandbox.findIndex((c) => c.name === s.sandboxCat));
       const cat = s.sandbox[ci];
-      if (cat) sandboxSections = cat.sections.map((sec, si) => ({ title: sec.title.toUpperCase(), cat: cat.name.toUpperCase(), fields: sec.fields.map((f, fi) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[ci + ":" + si + ":" + fi])) }));
+      if (cat) sandboxSections = cat.sections.map((sec, si) => ({ title: sec.title.toUpperCase(), cat: cat.name.toUpperCase(), fields: sec.fields.map((f, fi) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[f.key])) }));
     }
 
     const mq = s.modSearch.toLowerCase();

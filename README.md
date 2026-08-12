@@ -31,8 +31,13 @@ panel never fabricates game state.
 - **Server settings** — schema-driven editor for `<servername>.ini` with
   validation, secret masking, patch semantics (unknown keys preserved), backup +
   atomic writes, and live `changeoption`/`reloadoptions` for runtime-safe keys.
-- **Sandbox** — `<servername>_SandboxVars.lua` editor with the same
-  backup/atomic-write discipline.
+- **Sandbox** — near-complete vanilla **Build 42** `<servername>_SandboxVars.lua`
+  editor: **269 options** across 13 categories, including the nested
+  `Basement`, `Map`, `ZombieLore`, `ZombieConfig` and `MultiplierConfig` groups,
+  with Project Zomboid's own descriptions, enum labels, min/max bounds and
+  "not recommended" advisories. Searchable by label, key or description;
+  backup + atomic writes; unknown vanilla options and mod-added sections are
+  preserved untouched.
 - **Mods / Steam Workshop** — manage `WorkshopItems=` and `Mods=` with a correct
   one-to-many Workshop-ID → Mod-ID model, mod.info discovery from downloaded
   Workshop content, load-order moves, enable/disable, and update checks.
@@ -386,6 +391,30 @@ are rejected outright, since these values are written into the server's config.
   overlay: what's in the files is what runs. (Under AMP, AMP's own settings
   store regenerates the ini on restart — the panel surfaces this honestly via
   the `durableServerSettings` capability.)
+
+### Sandbox coverage
+
+The sandbox schema covers **269 vanilla Build 42 options** — every editable
+field in a server-generated `SandboxVars.lua` (`VERSION` is a file marker, not a
+setting) — grouped as General, Time & World, Loot, Food & Items, Nature &
+Farming, Character, Vehicles, Animals, Firearms, Map, Zombie Lore, Advanced
+Zombies and XP Multipliers.
+
+Field metadata (descriptions, enum legends, `Min`/`Max`/`Default`, and PZ's own
+"it is recommended that you DO NOT change this" advisories) is **generated from
+Project Zomboid's own metadata comments** in a server-generated
+`SandboxVars.lua` — see `backend/scripts/generate-sandbox-schema.ts`. Nothing is
+scraped and no Lua is executed.
+
+Two things worth knowing as an operator:
+
+- A schema **default is informational**. Values shown and saved always come from
+  *your* server's `SandboxVars.lua`; a field your file does not contain is
+  neither displayed nor written (absence means "whatever PZ does by default").
+- Saving patches **only the values you changed**, in place. Comments, formatting,
+  options ZPanel does not know about, and mod-added sections all survive
+  byte-for-byte. Sandbox changes are read by Project Zomboid **at startup**, so
+  the panel says *restart required* rather than pretending they applied live.
 
 ## Ports
 
