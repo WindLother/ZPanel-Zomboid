@@ -125,11 +125,99 @@ describe('role-gated controls (cosmetic mirror of backend authz)', () => {
     expect(html).toMatch(/can\.admin[\s\S]{0,400}RECENT ACTIVITY/);
   });
 
-  it('whitelist, settings and sandbox mutations are admin-gated', () => {
+  it('whitelist mutations stay admin-gated', () => {
     expect(html).toMatch(/can\.admin[^\n]*openAddWhitelistUser/);
     expect(html).toMatch(/can\.admin[^\n]*openAddSteam/);
-    expect(html).toMatch(/can\.admin[\s\S]{0,400}actions\.saveSettings/);
-    expect(html).toMatch(/can\.admin[\s\S]{0,200}actions\.saveSandbox/);
+  });
+
+  it('settings/sandbox save+discard are gated by their CAPABILITY, not by can.admin', () => {
+    // The capability is admin + moderator (backend: requireRole('moderator')),
+    // so a plain can.admin gate here would wrongly hide Save from moderators.
+    for (const [action, cap] of [
+      ['actions.saveSettings', 'can.editServerSettings'],
+      ['actions.discardSettings', 'can.editServerSettings'],
+      ['actions.saveSandbox', 'can.editSandbox'],
+      ['actions.discardSandbox', 'can.editSandbox'],
+    ]) {
+      const idx = html.indexOf(action);
+      expect(idx, `${action} not found`).toBeGreaterThan(-1);
+      const gate = html.lastIndexOf(`<sc-if value="{{ ${cap} }}">`, idx);
+      expect(gate, `${action} must sit inside a ${cap} gate`).toBeGreaterThan(-1);
+      expect(html.slice(gate, idx), `${cap} gate closed before ${action}`).not.toContain('</sc-if>');
+    }
+    expect(html).not.toMatch(/can\.admin[\s\S]{0,400}actions\.saveSettings/);
+    expect(html).not.toMatch(/can\.admin[\s\S]{0,200}actions\.saveSandbox/);
+  });
+});
+
+/**
+ * The intentional RBAC change: moderators may EDIT Server Settings and Sandbox
+ * Settings. These guard both halves of it — moderators must not lose the
+ * controls, and readonly must not gain them (nor be able to fire a PUT).
+ */
+describe('CAPABILITIES: settings/sandbox writes are admin + moderator, nothing else moves', () => {
+  const caps = section('const CAPABILITIES = {', '};');
+
+  it('the two config editors are admin + moderator', () => {
+    expect(caps).toMatch(/editServerSettings: \["admin", "moderator"\]/);
+    expect(caps).toMatch(/editSandbox: \["admin", "moderator"\]/);
+  });
+
+  it('users, console, activity, lifecycle and connections stay admin-only', () => {
+    for (const cap of ['manageUsers', 'useConsole', 'viewActivity', 'controlLifecycle', 'viewConnections']) {
+      expect(caps, `${cap} must remain admin-only`).toMatch(new RegExp(`${cap}: \\["admin"\\]`));
+    }
+    // no capability may be granted to readonly
+    expect(caps).not.toContain('readonly');
+  });
+
+  it('the render pass derives the two flags from the capability map', () => {
+    expect(html).toContain('const canEditServerSettings = hasCapability("editServerSettings", role);');
+    expect(html).toContain('const canEditSandbox = hasCapability("editSandbox", role);');
+    expect(html).toMatch(/can: \{ admin: isAdmin, moderate: canModerate, editServerSettings: canEditServerSettings, editSandbox: canEditSandbox \}/);
+  });
+
+  it('field controls are decorated with the capability and render disabled without it', () => {
+    // decorate() receives the capability and locks the control (not just the button)
+    expect(html).toMatch(/decorate\(f, "set-[^\n]*, canEditServerSettings\)/);
+    expect(html).toMatch(/decorate\(f, "sb-[^\n]*, canEditSandbox\)/);
+    const dec = section('decorate(f, id, onChange, dirty, editable) {', 'mods */');
+    expect(dec).toContain('const locked = editable === false;');
+    expect(dec).toMatch(/if \(locked\) onChange = \(\) => \{\};/); // edits cannot even create dirty state
+    // every config input/select/textarea/toggle binds disabled to that flag
+    const controls = html.match(/<(input|select|textarea|button)[^>]*id="\{\{ f\.id \}\}"[^>]*>/g) || [];
+    expect(controls.length).toBeGreaterThanOrEqual(7);
+    for (const c of controls) expect(c, c.slice(0, 80)).toContain('disabled="{{ f.locked }}"');
+  });
+
+  it('save handlers refuse without the capability, so no forbidden PUT is ever sent', () => {
+    const saveSettings = section('saveSettings = async () => {', 'discardSettings =');
+    const saveSandbox = section('saveSandbox = async () => {', 'discardSandbox =');
+    expect(saveSettings).toMatch(/if \(!this\.may\("editServerSettings"\)\).*return;/);
+    expect(saveSandbox).toMatch(/if \(!this\.may\("editSandbox"\)\).*return;/);
+    // the guard precedes the request in both
+    expect(saveSettings.indexOf('may("editServerSettings")')).toBeLessThan(saveSettings.indexOf('settingsApi.save'));
+    expect(saveSandbox.indexOf('may("editSandbox")')).toBeLessThan(saveSandbox.indexOf('sandboxApi.save'));
+    expect(html).toContain('may(capability) { return hasCapability(capability, this.state.me ? this.state.me.role : null); }');
+  });
+
+  it('saving settings never triggers a restart — it only reports restartRequired', () => {
+    const saveSettings = section('saveSettings = async () => {', 'discardSettings =');
+    expect(saveSettings).toContain('res.restartRequired');
+    for (const lifecycle of ['serverApi.restart', 'serverApi.start', 'serverApi.stop', 'serverApi.update']) {
+      expect(saveSettings, `saving must not call ${lifecycle}`).not.toContain(lifecycle);
+    }
+    const saveSandbox = section('saveSandbox = async () => {', 'discardSandbox =');
+    for (const lifecycle of ['serverApi.restart', 'serverApi.start', 'serverApi.stop', 'serverApi.update']) {
+      expect(saveSandbox, `saving must not call ${lifecycle}`).not.toContain(lifecycle);
+    }
+  });
+
+  it('moderators still get no console/users/activity navigation', () => {
+    const access = section('const PAGE_ACCESS = {', '};');
+    for (const page of ['console', 'users', 'activity']) {
+      expect(access).toMatch(new RegExp(`${page}: \\["admin"\\]`));
+    }
   });
 
   it('mod curation (add/remove/toggle/update-check) renders for moderator+', () => {

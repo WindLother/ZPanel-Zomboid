@@ -329,7 +329,7 @@ input,select,textarea{font-family:inherit}
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border:1px solid #26231e;border-radius:7px;background:#161410;position:sticky;top:-22px;z-index:5">
 <span style="display:flex;align-items:center;gap:8px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:{{ settingsDirty.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ settingsDirty.color }}"></span>{{ settingsDirty.text }}</span>
 <div style="display:flex;gap:8px">
-<sc-if value="{{ can.admin }}">
+<sc-if value="{{ can.editServerSettings }}">
 <button type="button" onClick="{{ actions.discardSettings }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Discard Changes</button>
 <button type="button" onClick="{{ actions.saveSettings }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save Changes</button>
 </sc-if>
@@ -350,22 +350,22 @@ input,select,textarea{font-family:inherit}
 </div>
 <div style="display:flex;justify-content:flex-end">
 <sc-if value="{{ f.isToggle }}">
-<button type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-pressed="{{ f.value }}" style="display:flex;align-items:center;gap:9px;padding:6px 11px 6px 8px;border:1px solid {{ f.toggleBorder }};border-radius:5px;background:{{ f.toggleBg }};color:{{ f.toggleColor }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer;min-width:118px">
+<button type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-pressed="{{ f.value }}" disabled="{{ f.locked }}" style="display:flex;align-items:center;gap:9px;padding:6px 11px 6px 8px;border:1px solid {{ f.toggleBorder }};border-radius:5px;background:{{ f.toggleBg }};color:{{ f.toggleColor }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:{{ f.cursor }};min-width:118px">
 <span style="width:26px;height:14px;border-radius:8px;background:{{ f.trackBg }};display:inline-flex;align-items:center;padding:2px;justify-content:{{ f.knobPos }}"><span style="width:10px;height:10px;border-radius:50%;background:{{ f.knobBg }}"></span></span>{{ f.toggleLabel }}</button>
 </sc-if>
 <sc-if value="{{ f.isSelect }}">
-<select id="{{ f.id }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:100%;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif;appearance:none;cursor:pointer">
+<select id="{{ f.id }}" value="{{ f.value }}" onChange="{{ f.onChange }}" disabled="{{ f.locked }}" style="width:100%;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif;appearance:none;cursor:{{ f.cursor }}">
 <sc-for list="{{ f.options }}" as="o" hint-placeholder-count="3"><option value="{{ o }}">{{ o }}</option></sc-for>
 </select>
 </sc-if>
 <sc-if value="{{ f.isNumber }}">
-<input id="{{ f.id }}" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}" step="{{ f.step }}" style="width:130px;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Mono',monospace;text-align:right">
+<input id="{{ f.id }}" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}" step="{{ f.step }}" disabled="{{ f.locked }}" style="width:130px;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Mono',monospace;text-align:right">
 </sc-if>
 <sc-if value="{{ f.isText }}">
-<input id="{{ f.id }}" type="text" value="{{ f.value }}" onChange="{{ f.onChange }}" placeholder="{{ f.placeholder }}" style="width:100%;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif">
+<input id="{{ f.id }}" type="text" value="{{ f.value }}" onChange="{{ f.onChange }}" placeholder="{{ f.placeholder }}" disabled="{{ f.locked }}" style="width:100%;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif">
 </sc-if>
 <sc-if value="{{ f.isTextarea }}">
-<textarea id="{{ f.id }}" rows="3" value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:100%;resize:vertical;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px/1.5 'IBM Plex Sans',sans-serif"></textarea>
+<textarea id="{{ f.id }}" rows="3" value="{{ f.value }}" onChange="{{ f.onChange }}" disabled="{{ f.locked }}" style="width:100%;resize:vertical;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px/1.5 'IBM Plex Sans',sans-serif"></textarea>
 </sc-if>
 </div>
 </div>
@@ -389,7 +389,7 @@ input,select,textarea{font-family:inherit}
 <span style="display:flex;align-items:center;gap:8px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ sandboxDirty.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ sandboxDirty.color }}"></span>{{ sandboxDirty.text }}</span>
 <span style="font:400 10.5px/1.4 'IBM Plex Mono',monospace;color:#d3922f">⚠ REQUIRES SERVER RESTART</span>
 <span style="font:400 11px/1.45 'IBM Plex Sans',sans-serif;color:#6b655d">Saved values are written to SandboxVars.lua; Project Zomboid reads them at startup.</span>
-<sc-if value="{{ can.admin }}">
+<sc-if value="{{ can.editSandbox }}">
 <button type="button" onClick="{{ actions.saveSandbox }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save Changes</button>
 <button type="button" onClick="{{ actions.discardSandbox }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Discard</button>
 </sc-if>
@@ -423,16 +423,16 @@ input,select,textarea{font-family:inherit}
 <div style="display:flex;justify-content:flex-end;align-items:center;gap:9px">
 <span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">{{ f.rangeHint }}</span>
 <sc-if value="{{ f.isToggle }}">
-<button type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-pressed="{{ f.value }}" style="display:flex;align-items:center;gap:9px;padding:6px 11px 6px 8px;border:1px solid {{ f.toggleBorder }};border-radius:5px;background:{{ f.toggleBg }};color:{{ f.toggleColor }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer;min-width:118px">
+<button type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-pressed="{{ f.value }}" disabled="{{ f.locked }}" style="display:flex;align-items:center;gap:9px;padding:6px 11px 6px 8px;border:1px solid {{ f.toggleBorder }};border-radius:5px;background:{{ f.toggleBg }};color:{{ f.toggleColor }};font:500 12px 'IBM Plex Sans',sans-serif;cursor:{{ f.cursor }};min-width:118px">
 <span style="width:26px;height:14px;border-radius:8px;background:{{ f.trackBg }};display:inline-flex;align-items:center;padding:2px;justify-content:{{ f.knobPos }}"><span style="width:10px;height:10px;border-radius:50%;background:{{ f.knobBg }}"></span></span>{{ f.toggleLabel }}</button>
 </sc-if>
 <sc-if value="{{ f.isSelect }}">
-<select id="{{ f.id }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="flex:1;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif;appearance:none;cursor:pointer">
+<select id="{{ f.id }}" value="{{ f.value }}" onChange="{{ f.onChange }}" disabled="{{ f.locked }}" style="flex:1;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif;appearance:none;cursor:{{ f.cursor }}">
 <sc-for list="{{ f.options }}" as="o" hint-placeholder-count="4"><option value="{{ o }}">{{ o }}</option></sc-for>
 </select>
 </sc-if>
 <sc-if value="{{ f.isNumber }}">
-<input id="{{ f.id }}" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}" step="{{ f.step }}" min="{{ f.min }}" max="{{ f.max }}" style="width:120px;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Mono',monospace;text-align:right">
+<input id="{{ f.id }}" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}" step="{{ f.step }}" min="{{ f.min }}" max="{{ f.max }}" disabled="{{ f.locked }}" style="width:120px;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#12110e;color:#e9e5dd;font:400 12.5px 'IBM Plex Mono',monospace;text-align:right">
 </sc-if>
 </div>
 </div>
@@ -619,7 +619,7 @@ input,select,textarea{font-family:inherit}
 <div style="display:grid;grid-template-columns:52px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid #201d18">
 <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#57524b">{{ a.at }}</span>
 <div style="display:flex;flex-direction:column;gap:4px">
-<span style="font:400 13px/1.45 'IBM Plex Sans',sans-serif;color:#cfc9c0"><strong style="font-weight:600;color:#e9e5dd">{{ a.actor }}</strong> {{ a.text }}</span>
+<span style="font:400 13px/1.45 'IBM Plex Sans',sans-serif;color:#cfc9c0"><strong style="font-weight:600;color:#e9e5dd">{{ a.actor }}</strong><sc-if value="{{ a.hasRole }}"><span style="margin:0 6px;padding:1px 6px;border:1px solid {{ a.roleBorder }};border-radius:3px;font:500 10px 'IBM Plex Mono',monospace;color:{{ a.roleColor }}">{{ a.role }}</span></sc-if> {{ a.text }}</span>
 <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#8a837a">{{ a.detail }}</span>
 </div>
 </div>
@@ -801,6 +801,24 @@ const PAGE_ACCESS = {
   activity: ["admin"],
 };
 const canAccessPage = (id, role) => (PAGE_ACCESS[id] || []).includes(role);
+// Named MUTATION capabilities by panel role. PAGE_ACCESS says who may OPEN a
+// page; this says who may CHANGE something on it. Both MIRROR the backend route
+// guards (the real security boundary — see backend/src/modules/*/routes.ts).
+//
+// Named capabilities exist so a permission change touches exactly what it means
+// to change. Settings and Sandbox writes are admin + moderator; user
+// management, the console, the Activity Log and start/stop/update deliberately
+// are not — a moderator must never become a second admin by proxy.
+const CAPABILITIES = {
+  editServerSettings: ["admin", "moderator"], // PUT /api/settings
+  editSandbox: ["admin", "moderator"],        // PUT /api/sandbox
+  manageUsers: ["admin"],                     // /api/users*
+  useConsole: ["admin"],                      // /api/console*
+  viewActivity: ["admin"],                    // GET /api/activity
+  controlLifecycle: ["admin"],                // start / stop / update (restart is moderator)
+  viewConnections: ["admin"],                 // GET /api/system/connections
+};
+const hasCapability = (cap, role) => (CAPABILITIES[cap] || []).includes(role);
 // Panel role: canonical backend id <-> frontend label.
 const PANEL_ROLES = [{ id: "admin", label: "Admin" }, { id: "moderator", label: "Moderator" }, { id: "readonly", label: "Read Only" }];
 const ROLE_COLORS = { admin: { color: "#e8bf74", border: "#6b5628" }, moderator: { color: "#a8cf87", border: "#45632f" }, readonly: { color: "#7f9bb5", border: "#2f4453" } };
@@ -1110,14 +1128,25 @@ class Component extends DCLogic {
       return { settings, dirtySettings: dirty };
     });
   };
+  /** Capability check for the current panel user (mirrors the backend guard). */
+  may(capability) { return hasCapability(capability, this.state.me ? this.state.me.role : null); }
   saveSettings = async () => {
+    // Never attempt a mutation the role cannot perform: no guaranteed-403 PUT.
+    if (!this.may("editServerSettings")) { this.toast("warn", "Read-only access", "Your role cannot change server settings."); return; }
     if (!Object.keys(this.state.dirtySettings).length) { this.toast("info", "Nothing to save"); return; }
     const changed = Object.keys(this.state.dirtySettings).length;
-    const needsRestart = Object.keys(this.state.dirtySettings).some((k) => { const [si, fi] = k.split(":"); return this.state.settings[si].fields[fi].restart; });
-    await this.state.api.settingsApi.save(this.state.settings);
-    this.setState({ settingsBase: JSON.parse(JSON.stringify(this.state.settings)), dirtySettings: {} });
+    let res;
+    try { res = await this.state.api.settingsApi.save(this.state.settings); }
+    catch (e) { this.toast("err", "Could not save server settings", (e && e.message) || ""); return; }
+    // Reflect the server's own post-write state (masked secrets, normalized
+    // values), not the optimistic local copy.
+    const groups = Array.isArray(res && res.groups) ? res.groups : this.state.settings;
+    this.setState({ settings: groups, settingsBase: JSON.parse(JSON.stringify(groups)), dirtySettings: {} });
     this.toast("ok", "Settings updated", changed + " setting(s) written to server config");
-    if (needsRestart) this.toast("warn", "Server restart required", "Some changed values only apply after a restart.");
+    // The backend decides whether a restart is needed. Informational only —
+    // performing the restart is a separate, separately-authorized action, and
+    // saving never restarts Project Zomboid.
+    if (res && res.restartRequired) this.toast("warn", "Restart required", "Some changed values only apply after a server restart.");
     this.logActivity("updated server settings", changed + " value(s) changed");
   };
   discardSettings = () => this.setState((s) => ({ settings: JSON.parse(JSON.stringify(s.settingsBase)), dirtySettings: {} }));
@@ -1146,6 +1175,8 @@ class Component extends DCLogic {
     });
   };
   saveSandbox = async () => {
+    // Never attempt a mutation the role cannot perform: no guaranteed-403 PUT.
+    if (!this.may("editSandbox")) { this.toast("warn", "Read-only access", "Your role cannot change sandbox settings."); return; }
     const dirty = Object.keys(this.state.dirtySandbox);
     if (!dirty.length) { this.toast("info", "Nothing to save"); return; }
     // Send ONLY the changed paths ({ "ZombieLore.Speed": "Shamblers" }); the
@@ -1164,11 +1195,20 @@ class Component extends DCLogic {
   };
   discardSandbox = () => this.setState((s) => ({ sandbox: JSON.parse(JSON.stringify(s.sandboxBase)), dirtySandbox: {} }));
 
-  decorate(f, id, onChange, dirty) {
+  /**
+   * Build the template model for one config field. `editable` is the caller's
+   * capability decision (canEditServerSettings / canEditSandbox): when false the
+   * control renders genuinely disabled and its onChange is a no-op, so a
+   * read-only role cannot produce dirty state — and therefore cannot reach a
+   * mutation request at all. The backend guard remains the boundary.
+   */
+  decorate(f, id, onChange, dirty, editable) {
     const isToggle = f.type === "toggle";
     const on = !!f.value;
+    const locked = editable === false;
+    if (locked) onChange = () => {};
     return {
-      ...f, id, dirtyMark: dirty ? "MODIFIED" : "",
+      ...f, id, dirtyMark: dirty ? "MODIFIED" : "", locked, cursor: locked ? "not-allowed" : "pointer",
       desc: f.desc || "", unit: f.unit ? f.unit.toUpperCase() : "", step: f.step || 1,
       placeholder: f.secret ? "not set" : "",
       // Project Zomboid's own "not recommended" advisory, shown prominently.
@@ -1464,12 +1504,16 @@ class Component extends DCLogic {
     };
 
     // Role capabilities mirror the backend guards (the real boundary):
-    //   moderate = kick/ban/save/broadcast/mod-update-check/quick-actions
-    //   admin    = lifecycle, settings/sandbox/mods/whitelist mutations,
+    //   moderate = kick/ban/save/broadcast/restart/mod curation/quick-actions
+    //   admin    = start/stop/update, whitelist + mod load-order mutations,
     //              console, users, activity, privileged player actions
+    // Named capabilities (CAPABILITIES) cover mutations whose role set is not
+    // simply "admin" or "moderator+" — currently the two config editors.
     const role = s.me ? s.me.role : null;
     const isAdmin = role === "admin";
     const canModerate = role === "admin" || role === "moderator";
+    const canEditServerSettings = hasCapability("editServerSettings", role);
+    const canEditSandbox = hasCapability("editSandbox", role);
     // Until the user is resolved, render the least-privileged navigation.
     const navRole = role || "readonly";
     const navGroups = NAV.map((g) => ({
@@ -1530,21 +1574,23 @@ class Component extends DCLogic {
       ],
     } : { open: false, facts: [], groups: [] };
 
+    // Fields are decorated with the editing capability: a role without it gets
+    // genuinely disabled controls, not merely a hidden Save button.
     const settingsSections = s.settings.map((sec, si) => ({
       title: sec.title.toUpperCase(),
-      fields: sec.fields.map((f, fi) => this.decorate(f, "set-" + si + "-" + fi, this.editSetting(si, fi), !!s.dirtySettings[si + ":" + fi])),
+      fields: sec.fields.map((f, fi) => this.decorate(f, "set-" + si + "-" + fi, this.editSetting(si, fi), !!s.dirtySettings[si + ":" + fi], canEditServerSettings)),
     }));
     const sq = s.sandboxSearch.trim().toLowerCase();
     let sandboxSections = [];
     if (sq) {
       s.sandbox.forEach((c, ci) => c.sections.forEach((sec, si) => {
         const fields = sec.fields.map((f, fi) => ({ f, fi })).filter(({ f }) => f.label.toLowerCase().includes(sq) || (f.desc || "").toLowerCase().includes(sq) || f.key.toLowerCase().includes(sq));
-        if (fields.length) sandboxSections.push({ title: sec.title.toUpperCase(), cat: c.name.toUpperCase(), fields: fields.map(({ f, fi }) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[f.key])) });
+        if (fields.length) sandboxSections.push({ title: sec.title.toUpperCase(), cat: c.name.toUpperCase(), fields: fields.map(({ f, fi }) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[f.key], canEditSandbox)) });
       }));
     } else {
       const ci = Math.max(0, s.sandbox.findIndex((c) => c.name === s.sandboxCat));
       const cat = s.sandbox[ci];
-      if (cat) sandboxSections = cat.sections.map((sec, si) => ({ title: sec.title.toUpperCase(), cat: cat.name.toUpperCase(), fields: sec.fields.map((f, fi) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[f.key])) }));
+      if (cat) sandboxSections = cat.sections.map((sec, si) => ({ title: sec.title.toUpperCase(), cat: cat.name.toUpperCase(), fields: sec.fields.map((f, fi) => this.decorate(f, "sb-" + ci + "-" + si + "-" + fi, this.editSandbox(ci, si, fi), !!s.dirtySandbox[f.key], canEditSandbox)) }));
     }
 
     const mq = s.modSearch.toLowerCase();
@@ -1611,7 +1657,7 @@ class Component extends DCLogic {
       .filter((g) => g.tools.length > 0);
 
     const days = [];
-    s.activity.forEach((a) => { let d = days.find((x) => x.day === a.day); if (!d) { d = { day: a.day.toUpperCase(), items: [] }; days.push(d); } d.items.push({ at: a.at, actor: a.actor, text: a.text, detail: a.detail || "" }); });
+    s.activity.forEach((a) => { let d = days.find((x) => x.day === a.day); if (!d) { d = { day: a.day.toUpperCase(), items: [] }; days.push(d); } d.items.push({ at: a.at, actor: a.actor, role: a.role || "", hasRole: !!a.role, roleColor: (ROLE_COLORS[roleId(a.role)] || ROLE_COLORS.readonly).color, roleBorder: (ROLE_COLORS[roleId(a.role)] || ROLE_COLORS.readonly).border, text: a.text, detail: a.detail || "" }); });
 
     const d = s.dialog;
     const dlg = d ? {
@@ -1635,7 +1681,7 @@ class Component extends DCLogic {
       ready: !s.loading && !s.error,
       // Capability flags for template gating. Cosmetic only — the backend
       // enforces every one of these server-side.
-      can: { admin: isAdmin, moderate: canModerate },
+      can: { admin: isAdmin, moderate: canModerate, editServerSettings: canEditServerSettings, editSandbox: canEditSandbox },
       srv, metrics, chart, navGroups, page: Object.fromEntries(Object.keys(TITLES).map((k) => [k, s.route === k])),
       pageTitle: TITLES[s.route], lastUpdated: ago < 2 ? "just now" : ago + "s ago",
       onlinePlayers: isOnline ? online.map(playerRow) : [],

@@ -165,6 +165,70 @@ describe('mods authorization matrix', () => {
   });
 });
 
+/**
+ * Blast-radius guard for the "moderators may edit Server/Sandbox Settings"
+ * grant: config WRITE access must not spill into any other restricted area.
+ * The two config writes themselves are covered by config-write-authz.test.ts.
+ */
+describe('moderator remains forbidden from every OTHER admin-only capability', () => {
+  const ADMIN_ONLY: Array<[string, string, unknown]> = [
+    // Server Console
+    ['GET', '/api/console', undefined],
+    ['POST', '/api/console/command', { command: 'players' }],
+    // Activity Log (viewing; recording is unaffected)
+    ['GET', '/api/activity', undefined],
+    // Panel user management / admin account management
+    ['GET', '/api/users', undefined],
+    ['POST', '/api/users', { username: 'newmod', password: 'SomePassword12', role: 'admin' }],
+    ['PATCH', '/api/users/1', { role: 'admin' }],
+    ['POST', '/api/users/1/reset-password', { password: 'SomePassword12' }],
+    ['DELETE', '/api/users/1', undefined],
+    // System connections / integration secrets
+    ['GET', '/api/system/connections', undefined],
+    // Lifecycle that leaves the server down or changes installed content
+    ['POST', '/api/server/start', {}],
+    ['POST', '/api/server/stop', {}],
+    ['POST', '/api/server/update', {}],
+    // Whitelist mutations + mod load-order/content updates + privileged player actions
+    ['POST', '/api/whitelist/users', { username: 'someone' }],
+    ['DELETE', '/api/whitelist/users/someone', undefined],
+    ['POST', '/api/mods/123456789/move', { direction: 1 }],
+    ['POST', '/api/mods/update', {}],
+    ['POST', '/api/players/someone/access', { level: 'admin' }],
+  ];
+
+  it('every listed admin-only endpoint returns 403 for a moderator', async () => {
+    const { cookie, csrf } = await login('mod1', PW.mod);
+    for (const [method, url, payload] of ADMIN_ONLY) {
+      expect((await inject(method, url, { cookie, csrf, payload })).statusCode, `${method} ${url}`).toBe(403);
+    }
+  });
+
+  it('readonly is forbidden from all of them too', async () => {
+    const { cookie, csrf } = await login('ro1', PW.ro);
+    for (const [method, url, payload] of ADMIN_ONLY) {
+      expect((await inject(method, url, { cookie, csrf, payload })).statusCode, `${method} ${url}`).toBe(403);
+    }
+  });
+
+  it('unauthenticated is rejected on all of them', async () => {
+    for (const [method, url, payload] of ADMIN_ONLY) {
+      expect([401, 403], `${method} ${url}`).toContain((await inject(method, url, { payload })).statusCode);
+    }
+  });
+
+  // Admin reachability of the read-only members is asserted here; the mutating
+  // ones (start/stop/update, console commands, whitelist RCON) are deliberately
+  // NOT invoked as admin — that would drive real systemd/RCON side effects from
+  // a test run. Their admin path is covered by users.test.ts / console-authz.
+  it('admin still reaches the admin-only READ endpoints', async () => {
+    const { cookie } = await login('boss', PW.admin);
+    for (const url of ['/api/console', '/api/activity', '/api/users', '/api/system/connections']) {
+      expect((await inject('GET', url, { cookie })).statusCode, url).not.toBe(403);
+    }
+  });
+});
+
 describe('moderator actions are still AUDITED (view-restriction never disables recording)', () => {
   it('an event recorded for a moderator actor is visible to the admin via the API', async () => {
     // audit.record is exactly what moderator-permitted routes (kick/ban/save/

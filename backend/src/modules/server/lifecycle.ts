@@ -6,6 +6,7 @@ import { db } from '../../db';
 import { operationLock } from '../../shared/lock';
 import { logger } from '../../shared/logger';
 import * as audit from '../activity/service';
+import type { Role } from '../auth/service';
 
 /**
  * Lifecycle operations, serialized through the operation lock so incompatible
@@ -17,6 +18,8 @@ import * as audit from '../activity/service';
 export interface ActorCtx {
   actorId: number | null;
   actorName: string;
+  /** The actor's own panel role, carried into the audit row (never inferred). */
+  actorRole?: Role | null;
   sourceIp: string;
 }
 
@@ -90,7 +93,12 @@ export function scheduleRestart(ctx: ActorCtx, delayMinutes: number, broadcastMs
     id,
     'restart',
     runAt,
-    JSON.stringify({ broadcast: broadcastMsg ?? null, actorId: ctx.actorId, sourceIp: ctx.sourceIp }),
+    JSON.stringify({
+      broadcast: broadcastMsg ?? null,
+      actorId: ctx.actorId,
+      actorRole: ctx.actorRole ?? null,
+      sourceIp: ctx.sourceIp,
+    }),
     ctx.actorName,
     'pending',
     new Date().toISOString(),
@@ -112,7 +120,12 @@ async function fire(id: string): Promise<void> {
     | undefined;
   if (!row) return;
   const payload = JSON.parse(row.payload || '{}');
-  const ctx: ActorCtx = { actorId: payload.actorId ?? null, actorName: row.actor_name, sourceIp: payload.sourceIp ?? '' };
+  const ctx: ActorCtx = {
+    actorId: payload.actorId ?? null,
+    actorName: row.actor_name,
+    actorRole: payload.actorRole ?? null,
+    sourceIp: payload.sourceIp ?? '',
+  };
   db.prepare('UPDATE scheduled_ops SET status = ? WHERE id = ?').run('running', id);
   try {
     await restart(ctx, { broadcast: payload.broadcast ?? 'Server is restarting now.' });

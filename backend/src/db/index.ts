@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS audit (
   timestamp  TEXT NOT NULL,
   actor_id   INTEGER,
   actor_name TEXT NOT NULL,
+  actor_role TEXT,
   action     TEXT NOT NULL,
   target     TEXT,
   details    TEXT,
@@ -68,5 +69,13 @@ const userCols = new Set(
 );
 if (!userCols.has('active')) db.exec('ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
 if (!userCols.has('updated_at')) db.exec('ALTER TABLE users ADD COLUMN updated_at TEXT');
+
+// Audit rows carry the actor's panel role so an admin reading the trail can see
+// WHICH role performed a privileged mutation (e.g. a moderator saving settings).
+// Nullable: rows written before this column existed simply have no role.
+const auditCols = new Set(
+  (db.prepare('PRAGMA table_info(audit)').all() as Array<{ name: string }>).map((c) => c.name),
+);
+if (!auditCols.has('actor_role')) db.exec('ALTER TABLE audit ADD COLUMN actor_role TEXT');
 
 logger.info({ dbPath }, 'panel database ready');

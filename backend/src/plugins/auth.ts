@@ -70,6 +70,17 @@ export async function requireAuth(req: FastifyRequest, _reply: FastifyReply): Pr
   if (!req.currentUser) throw err.unauthorized();
 }
 
+/**
+ * The single authorization primitive: a MINIMUM-rank guard, not an exact-role
+ * one. `requireRole('moderator')` therefore authorizes `moderator` AND `admin`
+ * and rejects `readonly` with 403 — which is exactly the "any of admin |
+ * moderator" shape the settings/sandbox write routes need. Do not add a
+ * parallel exact-role or ad-hoc check helper: one primitive keeps the matrix in
+ * AGENTS.md §10 readable and auditable.
+ *
+ * Unauthenticated requests are 401 (never 403), so a missing session is always
+ * distinguishable from an insufficient role.
+ */
 export function requireRole(min: Role) {
   return async (req: FastifyRequest, _reply: FastifyReply): Promise<void> => {
     if (!req.currentUser) throw err.unauthorized();
@@ -77,11 +88,24 @@ export function requireRole(min: Role) {
   };
 }
 
-/** Convenience for audit calls that need request context. */
-export function actor(req: FastifyRequest): { actorId: number | null; actorName: string; sourceIp: string } {
+/**
+ * Convenience for audit calls that need request context.
+ *
+ * The actor is ALWAYS the authenticated panel user — id, username and their own
+ * role. A privileged operation never gets attributed to `admin` just because it
+ * is privileged: a moderator saving settings is recorded as that moderator,
+ * with `actorRole: 'moderator'`.
+ */
+export function actor(req: FastifyRequest): {
+  actorId: number | null;
+  actorName: string;
+  actorRole: Role | null;
+  sourceIp: string;
+} {
   return {
     actorId: req.currentUser?.id ?? null,
     actorName: req.currentUser?.username ?? 'anonymous',
+    actorRole: req.currentUser?.role ?? null,
     sourceIp: req.ip,
   };
 }

@@ -370,11 +370,35 @@ Invariants:
   `requireRole(min)` on every route, rank-based (`readonly=0, moderator=1,
   admin=2`).
 - **Admin-only:** Users & Access (`/api/users*`), console (`/api/console`),
-  **Activity Log viewing (`GET /api/activity`)**, settings/sandbox writes,
-  whitelist mutations, **server start/stop/update**, **mod load-order moves and
-  content updates**, privileged player actions, system connections. Audit
-  **recording** covers every role — restricting who VIEWS the trail never
-  disables writing to it.
+  **Activity Log viewing (`GET /api/activity`)**, whitelist mutations, **server
+  start/stop/update**, **mod load-order moves and content updates**, privileged
+  player actions, system connections. Audit **recording** covers every role —
+  restricting who VIEWS the trail never disables writing to it.
+- **Configuration writes are `moderator` (INTENTIONAL — do not "restore" these
+  to admin):**
+
+  ```
+  PUT /api/settings   requireRole('moderator')   -> admin + moderator
+  PUT /api/sandbox    requireRole('moderator')   -> admin + moderator
+  ```
+
+  `readonly` gets 403, unauthenticated gets 401. Rationale: config edits are
+  allowlisted, schema-validated, backed up before every write, atomic, and
+  reversible — the day-to-day tuning a moderator is there to do. This is a
+  deliberate product decision; a future change set must not silently narrow it
+  back to `requireRole('admin')`. `test/config-write-authz.test.ts` pins the
+  matrix, the pipeline guarantees and the audit attribution.
+
+  What this grant does **NOT** include, and what must stay admin-only unless
+  changed just as deliberately: Users & Access, Activity Log, Server Console,
+  lifecycle start/stop/update, system connections. A moderator must never
+  become a second admin as a side effect of a config-permission change.
+  `test/route-authz.test.ts` asserts the 403s that keep that true.
+- **Config write ≠ lifecycle.** A settings save may report
+  `restartRequired: true`; it must never restart, schedule a restart, or imply
+  restart authority. Reporting the fact is allowed for every role that may
+  save; performing the restart is separately guarded (`moderator` for restart,
+  `admin` for start/stop/update).
 - **Lifecycle is split by recoverability:** `POST /api/server/restart` (and
   cancelling a scheduled restart) is `moderator` — the server comes back on its
   own; `start`/`stop`/`update` stay `admin` because they leave it down or change
@@ -387,9 +411,25 @@ Invariants:
   restricted than add; and `toggle` only edits `Mods=` while keeping the
   Workshop item, so it can never be more restricted than remove — a role that
   may delete a mod must also be able to merely disable it.
-- The frontend mirrors this in one place: the `PAGE_ACCESS` map in
-  `Zomboid_Server_Control.dc.html` drives navigation, direct-route fallback,
-  and role-aware data loading. Change route guards and that map together.
+- The frontend mirrors this in two maps in `Zomboid_Server_Control.dc.html`,
+  both cosmetic mirrors of the backend guards:
+  - `PAGE_ACCESS` — who may OPEN a page: navigation, direct-route fallback and
+    role-aware data loading derive from it.
+  - `CAPABILITIES` — who may CHANGE something: `editServerSettings` and
+    `editSandbox` are `["admin","moderator"]`; `manageUsers`, `useConsole`,
+    `viewActivity`, `controlLifecycle` and `viewConnections` are `["admin"]`.
+    Read it with `hasCapability(cap, role)` / `this.may(cap)`.
+
+  Change route guards and these maps together. Use a NAMED capability rather
+  than a bare `isAdmin`/`can.admin` check whenever a mutation's role set is not
+  simply "admin" — that is what keeps a permission change from leaking into
+  unrelated admin surfaces. Do not sweep `can.admin` gates generically.
+- **Read-only means disabled controls, not just a hidden button.** Config field
+  controls bind `disabled="{{ f.locked }}"` from the capability passed into
+  `decorate(f, id, onChange, dirty, editable)`, whose `onChange` becomes a
+  no-op when locked, and `saveSettings`/`saveSandbox` return early unless
+  `this.may(...)` — so an unauthorized role never even issues the request.
+  The backend guard remains the boundary; this only avoids guaranteed 403s.
 - CSRF: unsafe methods on `/api/*` require the session-bound `x-csrf-token`
   header plus an Origin/Referer check against `PANEL_ORIGINS` (login gets the
   origin check only). Login is rate-limited (8/min/IP).
@@ -397,9 +437,16 @@ Invariants:
   and disable end the target's sessions immediately.
 - **Last-admin protection:** the last active admin cannot be demoted, disabled,
   or deleted (409 `CONFLICT`). Do not weaken this.
-- Audit (`modules/activity`): every mutation records actor id/name, action
-  (e.g. `user.create`, `whitelist.addUser`), target, non-secret details,
+- Audit (`modules/activity`): every mutation records actor id/name/**role**,
+  action (e.g. `user.create`, `whitelist.addUser`), target, non-secret details,
   success, source IP. **Never** put passwords/hashes/secrets in audit details.
+- **Audit attribution is the authenticated user, always.** `actor(req)` reads
+  id, username and role off the session — a privileged operation is never
+  recorded as `admin` merely because it is privileged. A moderator's config
+  save appears as `actorRole: 'moderator'`, `action: 'settings.save'` /
+  `'sandbox.save'`, and the admin sees exactly that in the Activity Log.
+  (`audit.actor_role` is nullable and added by an idempotent migration in
+  `db/index.ts`; rows written before it exist simply have no role.)
 
 ## 11. RCON semantics (`integrations/rcon/`)
 
@@ -502,11 +549,16 @@ running them against production.
   npm run lint && npm run typecheck && npm test && npm run build
   ```
 
-- Current suite: 14 files / ~129 tests. **This count is non-authoritative and
+- Current suite: 20 files / 234 tests. **This count is non-authoritative and
   expected to grow** — never treat "the number of tests" as an invariant, but a
   *drop* without explanation means something was deleted.
 - Changes that REQUIRE new/updated tests:
-  - auth/session/CSRF/role changes (`users.test.ts`, `console-authz.test.ts`)
+  - auth/session/CSRF/role changes (`users.test.ts`, `console-authz.test.ts`,
+    `route-authz.test.ts`, `config-write-authz.test.ts`, `frontend-rbac.test.ts`)
+  - settings/sandbox write permissions or pipeline (`config-write-authz.test.ts`
+    — it runs the real routes against isolated temp copies of the fixtures and
+    asserts the role matrix, backup/atomic/validation behavior and audit
+    attribution together; never point it at a real server directory)
   - runtime adapter or capability changes (`runtime*.test.ts`,
     `no-amp-coupling.test.ts`)
   - any filesystem mutation path (`ini.test.ts`, `sandbox.test.ts`)

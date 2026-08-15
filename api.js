@@ -205,6 +205,11 @@ function humanizeAudit(e) {
   return { text, detail };
 }
 
+// The actor's own panel role, recorded server-side with each audit row, so the
+// admin reading the trail can see WHICH role performed a privileged mutation
+// (e.g. a moderator saving settings). Older rows predate the column -> no chip.
+const AUDIT_ROLE_LABEL = { admin: "Admin", moderator: "Moderator", readonly: "Read Only" };
+
 function mapActivity(events) {
   const today = new Date().toDateString();
   const yest = new Date(Date.now() - 86400000).toDateString();
@@ -212,7 +217,11 @@ function mapActivity(events) {
     const dt = new Date(e.timestamp);
     const day = dt.toDateString() === today ? "Today" : dt.toDateString() === yest ? "Yesterday" : dt.toLocaleDateString();
     const { text, detail } = humanizeAudit(e);
-    return { at: dt.toTimeString().slice(0, 5), day, actor: e.actorName, text, detail };
+    return {
+      at: dt.toTimeString().slice(0, 5), day, actor: e.actorName,
+      role: AUDIT_ROLE_LABEL[e.actorRole] || "",
+      text, detail,
+    };
   });
 }
 
@@ -295,10 +304,12 @@ export const whitelistApi = {
 
 export const settingsApi = {
   get: () => get("/api/settings"),
-  async save(next) {
-    const res = await put("/api/settings", next);
-    return res.groups; // keep the frontend contract (returns the group array)
-  },
+  // Returns the full save result: { groups, saved, restartRequired, applied,
+  // durableServerSettings }. The UI renders `groups` (server-authoritative,
+  // with secret values re-masked) and reports `restartRequired` from the
+  // backend instead of guessing client-side. A save NEVER restarts the game
+  // server — restarting is a separate, separately-authorized action.
+  save: (next) => put("/api/settings", next),
 };
 
 export const sandboxApi = {

@@ -317,15 +317,30 @@ security boundary):
 | Role | Can |
 |---|---|
 | `admin` | Everything: full lifecycle (start/stop/restart/update), settings, sandbox, mods, whitelist mutations, player powers/items/XP, console, Users & Access, Activity Log, system health |
-| `moderator` | Day-to-day moderation: kick/ban, save, broadcast, **restart (immediate or scheduled, incl. cancelling it)**, **mod curation (add / remove / enable / disable / update checks)**, moderator quick-actions — no start/stop/update, no mod load-order changes, no settings/sandbox/whitelist writes, no console, no user management, no Activity Log |
+| `moderator` | Day-to-day moderation and configuration: kick/ban, save, broadcast, **restart (immediate or scheduled, incl. cancelling it)**, **edit Server Settings**, **edit Sandbox Settings**, **mod curation (add / remove / enable / disable / update checks)**, moderator quick-actions — no start/stop/update, no mod load-order changes, no whitelist writes, no console, no user management, no Activity Log |
 | `readonly` | View the read pages (dashboard, players, whitelist, settings, sandbox, mods, logs); no mutations, no admin pages |
+
+Configuration write access by role:
+
+| Capability | admin | moderator | readonly |
+|---|---|---|---|
+| Read Server Settings / Sandbox | ✔ | ✔ | ✔ |
+| Save Server Settings (`PUT /api/settings`) | ✔ | ✔ | ✘ (403) |
+| Save Sandbox Settings (`PUT /api/sandbox`) | ✔ | ✔ | ✘ (403) |
+| Users & Access, Activity Log, Server Console, system connections | ✔ | ✘ | ✘ |
+| Start / Stop / Update, mod load-order, whitelist writes | ✔ | ✘ | ✘ |
+
+Saving configuration is **not** lifecycle control: a save writes the file (with
+backup + atomic write) and reports *Restart required* when the changed keys only
+take effect at startup. It never restarts Project Zomboid, and it does not grant
+a moderator any start/stop/update ability.
 
 Canonical page access (navigation, direct-route fallback, and data loading all
 follow it; the backend enforces the same matrix server-side):
 
 | Page | admin | moderator | readonly |
 |---|---|---|---|
-| Dashboard, Players, Whitelist, Settings, Sandbox, Mods, Logs | ✔ | ✔ (read; mutations per role) | ✔ (read-only) |
+| Dashboard, Players, Whitelist, Settings, Sandbox, Mods, Logs | ✔ | ✔ (read; mutations per role — incl. saving Settings & Sandbox) | ✔ (read-only) |
 | Admin Tools | ✔ (all tools) | ✔ (moderator-level tools only) | ✘ |
 | Server Console | ✔ | ✘ | ✘ |
 | Users & Access | ✔ | ✘ | ✘ |
@@ -339,8 +354,18 @@ Mods are split the same way: moderators **curate** the list (add, remove,
 enable/disable, check for updates), while **load-order changes** and **content
 updates** remain admin-only.
 
+Configuration editing follows the same reasoning: **Server Settings and Sandbox
+Settings writes are available to moderators** — they are reviewable, backed up
+before every write, and reversible — while Users & Access, the Activity Log, the
+Server Console, system connections and start/stop/update remain admin-only.
+Read-only accounts see both editors with the values filled in, but the controls
+render disabled and the panel sends no write request; the backend independently
+answers `403`.
+
 Moderator/readonly actions are still **recorded** in the audit trail — the
-admin-only restriction applies to *viewing* it, never to auditing.
+admin-only restriction applies to *viewing* it, never to auditing. Each entry
+carries the actor's own role, so an admin reading the log sees exactly which
+role made a change (e.g. `kvr` · Moderator · *changed server settings*).
 
 Additional protections: session cookies are signed and `HttpOnly`; role changes,
 password resets, and disables immediately invalidate the target's sessions; the
