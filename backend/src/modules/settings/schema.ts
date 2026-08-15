@@ -1,23 +1,29 @@
 import { z } from 'zod';
+import { err } from '../../shared/errors';
+import { SETTINGS_SCHEMA } from './schema.generated';
+import { GROUPS, POLICY, EXTRA_FIELDS, EXCLUDED_KEYS, groupFor, labelFor } from './categories';
+import type { SettingFieldDef, SettingKind } from './types';
 
 /**
- * Allowlisted server settings. The browser can only write keys defined here, and
- * only values that pass `validate`. Everything else in servertest.ini is
- * preserved untouched (patch semantics). `iniKey` bridges the frontend's chosen
- * key to the real Project Zomboid ini key discovered on this server (e.g. the
- * frontend "ServerName" is the ini "PublicName").
+ * Allowlisted server settings. The browser can only write keys defined here,
+ * and only values that pass this module's per-kind validation. Everything else
+ * in `<servername>.ini` is preserved untouched (patch semantics).
  *
- * IMPORTANT: every ini key here is AMP-owned (AMP regenerates the ini from its
- * GenericModule AppSettings on restart). See docs/AMP.md. Writes go through the
- * file with backup+atomic, and `restart` / `live` describe how a change takes
- * effect.
+ * The field metadata is GENERATED from Project Zomboid's own ini comments
+ * (`schema.generated.ts`); grouping, labels, secrets and restart/live semantics
+ * are hand-maintained in `categories.ts`. This file joins the two and attaches
+ * the validators.
+ *
+ * This is an ALLOWLIST, not an arbitrary ini editor: a key absent here is never
+ * written, and `Mods` / `WorkshopItems` are deliberately excluded because the
+ * Mods page owns them (AGENTS.md §9).
  */
 
-export type FieldType = 'text' | 'textarea' | 'number' | 'toggle';
+export type FieldType = 'text' | 'textarea' | 'number' | 'toggle' | 'select';
 
 export interface SettingDef {
-  key: string; // frontend/canonical key
-  iniKey: string; // real key in servertest.ini
+  key: string; // canonical key — identical to iniKey
+  iniKey: string; // real key in <servername>.ini
   label: string;
   desc?: string;
   type: FieldType;
@@ -29,150 +35,152 @@ export interface SettingDef {
   restart?: boolean; // requires a server restart to take effect
   live?: boolean; // safely applicable at runtime via changeoption+reloadoptions
   secret?: boolean;
+  /** Operator-facing caution (destructive or self-locking changes). */
+  warning?: string;
   min?: number;
   max?: number;
+  step?: number;
+  /** Enum choices, as display labels (the ini stores the matching number). */
+  options?: string[];
 }
 
-const G = {
-  general: { id: 'general', title: 'General' },
-  visibility: { id: 'visibility', title: 'Visibility' },
-  gameplay: { id: 'gameplay', title: 'Gameplay' },
-  network: { id: 'network', title: 'Network' },
-  access: { id: 'access', title: 'Access' },
+const GROUP_BY_ID = new Map(GROUPS.map((g) => [g.id, g]));
+const groupOf = (id: string): { id: string; title: string } => GROUP_BY_ID.get(id) ?? { id: 'advanced', title: 'Advanced' };
+
+/** Newlines/CR would split one ini entry into two — never allow them through. */
+const safeText = (maxLength: number) =>
+  z
+    .string()
+    .max(maxLength)
+    .refine((v) => !/[\r\n]/.test(v), { message: 'Value may not contain line breaks.' });
+
+const TYPE_BY_KIND: Record<SettingKind, FieldType> = {
+  toggle: 'toggle',
+  int: 'number',
+  float: 'number',
+  text: 'text',
+  textarea: 'textarea',
+  enum: 'select',
 };
 
-const boolField = (
-  key: string,
-  iniKey: string,
-  label: string,
-  group: { id: string; title: string },
-  opts: Partial<SettingDef> = {},
-): SettingDef => ({
-  key,
-  iniKey,
-  label,
-  type: 'toggle',
-  group,
-  fromIni: (raw) => String(raw).toLowerCase() === 'true',
-  toIni: (v) => (z.boolean().parse(v) ? 'true' : 'false'),
-  ...opts,
-});
+function buildDef(meta: SettingFieldDef): SettingDef {
+  const policy = POLICY[meta.iniKey] ?? {};
+  const kind: SettingKind = policy.kind ?? meta.kind;
+  const label = policy.label ?? meta.label;
 
-const numberField = (
-  key: string,
-  iniKey: string,
-  label: string,
-  group: { id: string; title: string },
-  min: number,
-  max: number,
-  opts: Partial<SettingDef> = {},
-): SettingDef => ({
-  key,
-  iniKey,
-  label,
-  type: 'number',
-  group,
-  min,
-  max,
-  fromIni: (raw) => (raw === undefined || raw === '' ? 0 : Number(raw)),
-  toIni: (v) => String(z.coerce.number().int().min(min).max(max).parse(v)),
-  ...opts,
-});
+  // Default to restart-required. `live` is only ever claimed where a runtime
+  // changeoption is known to work — reporting a change as applied when it was
+  // not would be fabricated data (AGENTS.md §1 rule 18).
+  const restart = policy.live ? undefined : (policy.restart ?? true);
 
-const textField = (
-  key: string,
-  iniKey: string,
-  label: string,
-  group: { id: string; title: string },
-  opts: Partial<SettingDef> = {},
-): SettingDef => ({
-  key,
-  iniKey,
-  label,
-  type: 'text',
-  group,
-  fromIni: (raw) => raw ?? '',
-  toIni: (v) => z.string().max(500).parse(v),
-  ...opts,
-});
+  const base = {
+    key: meta.iniKey,
+    iniKey: meta.iniKey,
+    label,
+    type: TYPE_BY_KIND[kind],
+    group: groupOf(meta.group),
+    ...(meta.desc ? { desc: meta.desc } : {}),
+    ...(restart ? { restart: true } : {}),
+    ...(policy.live ? { live: true } : {}),
+    ...(policy.secret ? { secret: true } : {}),
+    ...(policy.warning ? { warning: policy.warning } : {}),
+  };
 
-export const SETTINGS: SettingDef[] = [
-  // General
-  textField('ServerName', 'PublicName', 'Server Name', G.general, {
-    desc: 'Shown in the public server browser.',
-    live: true,
-  }),
-  {
-    ...textField('Description', 'PublicDescription', 'Description', G.general, {
-      desc: 'Short public description.',
-    }),
-    type: 'textarea',
-  },
-  textField('Password', 'Password', 'Password', G.general, {
-    desc: 'Leave empty for no password.',
-    secret: true,
-    restart: true,
-  }),
-  numberField('MaxPlayers', 'MaxPlayers', 'Maximum Players', G.general, 1, 100, {
-    desc: 'Concurrent player slots.',
-    restart: true,
-  }),
+  if (kind === 'toggle') {
+    return {
+      ...base,
+      fromIni: (raw) => String(raw).toLowerCase() === 'true',
+      // NB: z.coerce.boolean() is useless here - Boolean('false') is true.
+      toIni: (v) => {
+        if (typeof v === 'boolean') return v ? 'true' : 'false';
+        if (typeof v === 'string' && /^(true|false)$/i.test(v)) return v.toLowerCase();
+        throw err.invalid(`${label} must be true or false.`, { key: meta.iniKey });
+      },
+    };
+  }
 
-  // Visibility
-  boolField('Public', 'Public', 'Public Server', G.visibility, {
-    desc: 'List the server in the in-game browser.',
-  }),
-  boolField('Open', 'Open', 'Open Server', G.visibility, {
-    desc: 'When off, only whitelisted accounts may join.',
-  }),
+  if (kind === 'enum') {
+    const options = meta.options ?? [];
+    const labels = options.map((o) => o.label);
+    return {
+      ...base,
+      options: labels,
+      fromIni: (raw) => {
+        const n = Number(raw);
+        return options.find((o) => o.value === n)?.label ?? (raw ?? '');
+      },
+      toIni: (v) => {
+        // Accept either the display label (what the UI sends) or the raw number.
+        if (typeof v === 'number' || (typeof v === 'string' && /^-?\d+$/.test(v))) {
+          const n = Number(v);
+          if (!options.some((o) => o.value === n)) {
+            throw err.invalid(`${label}: invalid selection.`, { key: meta.iniKey });
+          }
+          return String(n);
+        }
+        const hit = options.find((o) => o.label === v);
+        if (!hit) throw err.invalid(`${label}: invalid selection.`, { key: meta.iniKey });
+        return String(hit.value);
+      },
+    };
+  }
 
-  // Gameplay
-  boolField('PVP', 'PVP', 'PvP', G.gameplay, {
-    desc: 'Allow players to damage each other.',
-    live: true,
-  }),
-  boolField('PauseEmpty', 'PauseEmpty', 'Pause When Empty', G.gameplay, {
-    desc: 'Freeze world time with no players online.',
-    live: true,
-  }),
-  boolField('SafetySystem', 'SafetySystem', 'Safety System', G.gameplay, {
-    desc: 'Players must enable PvP mode before fighting.',
-    live: true,
-  }),
-  boolField('GlobalChat', 'GlobalChat', 'Global Chat', G.gameplay, {
-    desc: 'Server-wide text chat.',
-    live: true,
-  }),
+  if (kind === 'int' || kind === 'float') {
+    const min = meta.min;
+    const max = meta.max;
+    let num = kind === 'int' ? z.coerce.number().int() : z.coerce.number();
+    if (min !== undefined) num = num.min(min);
+    if (max !== undefined) num = num.max(max);
+    return {
+      ...base,
+      ...(min !== undefined ? { min } : {}),
+      ...(max !== undefined ? { max } : {}),
+      step: kind === 'float' ? 0.01 : 1,
+      fromIni: (raw) => (raw === undefined || raw === '' ? 0 : Number(raw)),
+      toIni: (v) => String(num.parse(v)),
+    };
+  }
 
-  // Network (ports require restart)
-  numberField('DefaultPort', 'DefaultPort', 'Default Port', G.network, 0, 65535, {
-    desc: 'Game traffic.',
-    restart: true,
-  }),
-  numberField('UDPPort', 'UDPPort', 'UDP Port', G.network, 0, 65535, {
-    desc: 'Direct connection port.',
-    restart: true,
-  }),
-  numberField('RCONPort', 'RCONPort', 'RCON Port', G.network, 0, 65535, {
-    desc: 'Remote administration port.',
-    restart: true,
-  }),
-  textField('RCONPassword', 'RCONPassword', 'RCON Password', G.network, {
-    desc: "Used by this panel's backend only.",
-    secret: true,
-    restart: true,
-  }),
+  // text / textarea
+  const maxLength = policy.maxLength ?? (kind === 'textarea' ? 4000 : 500);
+  return {
+    ...base,
+    fromIni: (raw) => raw ?? '',
+    toIni: (v) => safeText(maxLength).parse(v),
+  };
+}
 
-  // Access
-  boolField('AutoCreateUser', 'AutoCreateUserInWhiteList', 'Auto-create Whitelist Users', G.access, {
-    desc: 'First login registers the account automatically.',
-  }),
-  boolField('DropOffWhiteListAfterDeath', 'DropOffWhiteListAfterDeath', 'Remove From Whitelist On Death', G.access, {
-    desc: 'Permadeath enforcement.',
-  }),
-  numberField('MaxAccountsPerUser', 'MaxAccountsPerUser', 'Max Accounts Per User', G.access, 0, 10, {
-    desc: '0 = unlimited.',
-  }),
-];
+const EXTRA_DEFS: SettingFieldDef[] = EXTRA_FIELDS.map((f) => ({
+  iniKey: f.iniKey,
+  label: labelFor(f.iniKey),
+  group: groupFor(f.iniKey),
+  kind: f.kind,
+  ...(f.desc ? { desc: f.desc } : {}),
+  ...(f.min !== undefined ? { min: f.min } : {}),
+  ...(f.max !== undefined ? { max: f.max } : {}),
+}));
 
-export const SETTINGS_BY_KEY = new Map(SETTINGS.map((s) => [s.key, s]));
+const ALL_META: SettingFieldDef[] = [...SETTINGS_SCHEMA, ...EXTRA_DEFS].filter((m) => !EXCLUDED_KEYS.has(m.iniKey));
+
+/** Ordered by the group order in categories.ts, then by generated order. */
+const GROUP_RANK = new Map(GROUPS.map((g, i) => [g.id, i]));
+export const SETTINGS: SettingDef[] = ALL_META.map(buildDef).sort(
+  (a, b) => (GROUP_RANK.get(a.group.id) ?? 99) - (GROUP_RANK.get(b.group.id) ?? 99),
+);
+
+/**
+ * Lookup by canonical key. Keys are the ini key names; the three legacy
+ * frontend aliases used before the schema covered the whole file are still
+ * accepted so an older cached page cannot silently drop a field on save.
+ */
+const LEGACY_ALIASES: Record<string, string> = {
+  ServerName: 'PublicName',
+  Description: 'PublicDescription',
+  AutoCreateUser: 'AutoCreateUserInWhiteList',
+};
+
+export const SETTINGS_BY_KEY = new Map<string, SettingDef>(SETTINGS.map((s) => [s.key, s]));
+for (const [alias, target] of Object.entries(LEGACY_ALIASES)) {
+  const def = SETTINGS_BY_KEY.get(target);
+  if (def) SETTINGS_BY_KEY.set(alias, def);
+}

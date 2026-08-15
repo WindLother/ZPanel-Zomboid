@@ -28,9 +28,14 @@ panel never fabricates game state.
   Reads come from the PZ account database (the authoritative source); mutations
   go through official RCON commands and are then **confirmed** against that
   database rather than trusted blindly.
-- **Server settings** — schema-driven editor for `<servername>.ini` with
-  validation, secret masking, patch semantics (unknown keys preserved), backup +
-  atomic writes, and live `changeoption`/`reloadoptions` for runtime-safe keys.
+- **Server settings** — schema-driven editor covering the **whole
+  `<servername>.ini`: 142 options across 16 groups** (General, Network, Access,
+  Display, Chat, Voice, PvP, Safehouse, Factions, World, Vehicles, Moderation,
+  Anti-Cheat, Discord, Backups, Identity), with Project Zomboid's own
+  descriptions, bounds and enum legends. Searchable by label, key or
+  description; validation, secret masking, patch semantics (only the keys you
+  changed are written, everything else preserved), backup + atomic writes, and
+  live `changeoption`/`reloadoptions` for the keys verified safe at runtime.
 - **Sandbox** — near-complete vanilla **Build 42** `<servername>_SandboxVars.lua`
   editor: **269 options** across 13 categories, including the nested
   `Basement`, `Map`, `ZombieLore`, `ZombieConfig` and `MultiplierConfig` groups,
@@ -411,7 +416,18 @@ are rejected outright, since these values are written into the server's config.
   only a "configured" flag.
 - Runtime-safe ini keys are additionally applied live via RCON
   `changeoption`/`reloadoptions`; others take effect on the next restart, and
-  the UI says so.
+  the UI says so. A key is only reported as applied live once that has been
+  verified against a real server — everything else honestly says *restart
+  required* rather than claiming an effect it cannot guarantee.
+- The Server Settings field list is **generated from Project Zomboid's own ini
+  comments** (`backend/scripts/generate-settings-schema.ts`), the same way the
+  sandbox schema is. Only metadata is taken from the sample file — never its
+  values.
+- `Mods=` and `WorkshopItems=` are deliberately **not** editable here; the Mods
+  page owns them, so a settings save can never overwrite your mod list.
+- Saving writes **only the fields you changed**. Editing the ini by hand while a
+  Settings page is open is still worth avoiding — reload the page afterwards so
+  it does not hold stale values for the keys you touched.
 - With the `systemd`/`standalone` runtimes there is no external settings
   overlay: what's in the files is what runs. (Under AMP, AMP's own settings
   store regenerates the ini on restart — the panel surfaces this honestly via

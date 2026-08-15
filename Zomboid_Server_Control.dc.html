@@ -325,16 +325,30 @@ input,select,textarea{font-family:inherit}
 </sc-if>
 
 <sc-if value="{{ page.settings }}">
-<div style="display:flex;flex-direction:column;gap:14px;max-width:1000px">
-<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border:1px solid #26231e;border-radius:7px;background:#161410;position:sticky;top:-22px;z-index:5">
-<span style="display:flex;align-items:center;gap:8px;font:400 12.5px 'IBM Plex Sans',sans-serif;color:{{ settingsDirty.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ settingsDirty.color }}"></span>{{ settingsDirty.text }}</span>
-<div style="display:flex;gap:8px">
+<div style="display:grid;grid-template-columns:210px minmax(0,1fr);gap:18px;max-width:1200px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:10px;position:sticky;top:-22px">
+<input type="search" value="{{ form.settingsSearch }}" onChange="{{ form.onSettingsSearch }}" placeholder="Search settings…" aria-label="Search server settings" style="width:100%;padding:8px 11px;border:1px solid #34302a;border-radius:5px;background:#161410;color:#e9e5dd;font:400 12.5px 'IBM Plex Sans',sans-serif">
+<div style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden;display:flex;flex-direction:column">
+<sc-for list="{{ settingsGroups }}" as="g" hint-placeholder-count="12">
+<button type="button" onClick="{{ g.go }}" style="text-align:left;padding:9px 13px;border:0;border-bottom:1px solid #201d18;cursor:pointer;background:{{ g.bg }};color:{{ g.color }};font:500 12.5px 'IBM Plex Sans',sans-serif;display:flex;justify-content:space-between;gap:8px" style-hover="background:#1f1c17">{{ g.name }}<span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#57524b">{{ g.count }}</span></button>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #26231e;border-radius:7px;background:#161410">
+<span style="display:flex;align-items:center;gap:8px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ settingsDirty.color }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ settingsDirty.color }}"></span>{{ settingsDirty.text }}</span>
+<span style="font:400 11px/1.45 'IBM Plex Sans',sans-serif;color:#6b655d">Saved values are written to the server's .ini with a backup. Keys marked below only apply after a restart.</span>
 <sc-if value="{{ can.editServerSettings }}">
-<button type="button" onClick="{{ actions.discardSettings }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Discard Changes</button>
 <button type="button" onClick="{{ actions.saveSettings }}" style="padding:8px 13px;border:1px solid #6b5628;border-radius:5px;background:#2a2113;color:#e8bf74;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#352a17">Save Changes</button>
+<button type="button" onClick="{{ actions.discardSettings }}" style="padding:8px 13px;border:1px solid #34302a;border-radius:5px;background:#1c1a16;color:#cfc9c0;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer" style-hover="background:#241f19">Discard Changes</button>
 </sc-if>
 </div>
 </div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+<sc-if value="{{ settingsEmpty }}">
+<div style="padding:22px;border:1px solid #26231e;border-radius:7px;background:#161410;text-align:center">
+<span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#cfc9c0">No server settings match “{{ form.settingsSearch }}”.</span>
+</div>
+</sc-if>
 <sc-for list="{{ settingsSections }}" as="sec" hint-placeholder-count="3">
 <section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
 <div style="padding:12px 18px;border-bottom:1px solid #26231e;background:#191713;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#918a80">{{ sec.title }}</div>
@@ -346,6 +360,9 @@ input,select,textarea{font-family:inherit}
 <span style="font:400 12px/1.45 'IBM Plex Sans',sans-serif;color:#8a837a">{{ f.desc }}</span>
 <sc-if value="{{ f.restart }}">
 <span style="font:500 11px 'IBM Plex Mono',monospace;color:#d3922f;display:flex;align-items:center;gap:6px">⚠ REQUIRES SERVER RESTART</span>
+</sc-if>
+<sc-if value="{{ f.hasWarning }}">
+<span style="display:block;margin-top:2px;padding:7px 9px;border:1px solid #5a4520;border-left-width:3px;border-radius:4px;background:#221a0e;font:400 11.5px/1.45 'IBM Plex Sans',sans-serif;color:#e8bf74"><strong style="font-weight:600">Caution — </strong>{{ f.warning }}</span>
 </sc-if>
 </div>
 <div style="display:flex;justify-content:flex-end">
@@ -373,6 +390,7 @@ input,select,textarea{font-family:inherit}
 </div>
 </section>
 </sc-for>
+</div>
 </div>
 </sc-if>
 
@@ -836,7 +854,8 @@ class Component extends DCLogic {
     settings: [], settingsBase: [], sandbox: [], sandboxBase: [], mods: [], logs: [], consoleLines: [], activity: [],
     me: null, panelUsers: [], usersLoaded: false,
     dirtySettings: {}, dirtySandbox: {},
-    sandboxCat: "General", sandboxSearch: "", playerSearch: "", playerFilter: "All", modSearch: "",
+    sandboxCat: "General", sandboxSearch: "", settingsGroup: null, settingsSearch: "",
+    playerSearch: "", playerFilter: "All", modSearch: "",
     logFilter: "All", logSearch: "", paused: false, autoscroll: true,
     consoleInput: "", history: [], broadcast: "",
     dialog: null, form: {}, menu: null, detail: null, toasts: [], powers: {},
@@ -1133,10 +1152,22 @@ class Component extends DCLogic {
   saveSettings = async () => {
     // Never attempt a mutation the role cannot perform: no guaranteed-403 PUT.
     if (!this.may("editServerSettings")) { this.toast("warn", "Read-only access", "Your role cannot change server settings."); return; }
-    if (!Object.keys(this.state.dirtySettings).length) { this.toast("info", "Nothing to save"); return; }
-    const changed = Object.keys(this.state.dirtySettings).length;
+    const dirtyKeys = Object.keys(this.state.dirtySettings);
+    if (!dirtyKeys.length) { this.toast("info", "Nothing to save"); return; }
+    const changed = dirtyKeys.length;
+    // Send ONLY the changed keys ({ "MaxPlayers": 32 }). The schema now covers
+    // the whole .ini, so posting every field would rewrite the entire
+    // allowlisted surface from a possibly stale page — and clobber any edit made
+    // to the file since this page loaded. The backend patches exactly what it
+    // receives and leaves every other key alone.
+    const payload = {};
+    for (const k of dirtyKeys) {
+      const [si, fi] = k.split(":");
+      const f = ((this.state.settings[si] || {}).fields || [])[fi];
+      if (f) payload[f.key] = f.value;
+    }
     let res;
-    try { res = await this.state.api.settingsApi.save(this.state.settings); }
+    try { res = await this.state.api.settingsApi.save(payload); }
     catch (e) { this.toast("err", "Could not save server settings", (e && e.message) || ""); return; }
     // Reflect the server's own post-write state (masked secrets, normalized
     // values), not the optimistic local copy.
@@ -1576,9 +1607,32 @@ class Component extends DCLogic {
 
     // Fields are decorated with the editing capability: a role without it gets
     // genuinely disabled controls, not merely a hidden Save button.
-    const settingsSections = s.settings.map((sec, si) => ({
-      title: sec.title.toUpperCase(),
-      fields: sec.fields.map((f, fi) => this.decorate(f, "set-" + si + "-" + fi, this.editSetting(si, fi), !!s.dirtySettings[si + ":" + fi], canEditServerSettings)),
+    //
+    // The ini schema covers the whole file (140+ keys), so Server Settings uses
+    // the same shape as Sandbox: a group sidebar, or a flat search across every
+    // group. Indices stay the ORIGINAL (si, fi) so edits and dirty tracking keep
+    // addressing s.settings correctly no matter what is being displayed.
+    const gq = s.settingsSearch.trim().toLowerCase();
+    const setField = (sec, si, f, fi) =>
+      this.decorate(f, "set-" + si + "-" + fi, this.editSetting(si, fi), !!s.dirtySettings[si + ":" + fi], canEditServerSettings);
+    let settingsSections = [];
+    if (gq) {
+      s.settings.forEach((sec, si) => {
+        const hits = sec.fields.map((f, fi) => ({ f, fi })).filter(({ f }) =>
+          f.label.toLowerCase().includes(gq) || (f.desc || "").toLowerCase().includes(gq) || f.key.toLowerCase().includes(gq));
+        if (hits.length) settingsSections.push({ title: sec.title.toUpperCase(), fields: hits.map(({ f, fi }) => setField(sec, si, f, fi)) });
+      });
+    } else {
+      const gi = Math.max(0, s.settings.findIndex((sec) => sec.title === s.settingsGroup));
+      const grp = s.settings[gi];
+      if (grp) settingsSections = [{ title: grp.title.toUpperCase(), fields: grp.fields.map((f, fi) => setField(grp, gi, f, fi)) }];
+    }
+    const settingsGroups = s.settings.map((sec) => ({
+      name: sec.title,
+      count: sec.fields.length,
+      go: () => this.setState({ settingsGroup: sec.title, settingsSearch: "" }),
+      bg: !gq && (s.settingsGroup || (s.settings[0] || {}).title) === sec.title ? "#221e18" : "transparent",
+      color: !gq && (s.settingsGroup || (s.settings[0] || {}).title) === sec.title ? C.amber : "#a9a29a",
     }));
     const sq = s.sandboxSearch.trim().toLowerCase();
     let sandboxSections = [];
@@ -1693,7 +1747,9 @@ class Component extends DCLogic {
       whitelistUsers: s.whitelist.users.map((u) => ({ name: u, remove: () => this.confirmRemoveWhitelist("user", u) })),
       whitelistIds: s.whitelist.steamIds.map((u) => ({ name: u, remove: () => this.confirmRemoveWhitelist("steam", u) })),
       whitelistUsersEmpty: s.whitelist.users.length === 0, whitelistIdsEmpty: s.whitelist.steamIds.length === 0,
-      settingsSections, settingsDirty: { text: dirtyCount ? dirtyCount + " unsaved change(s)" : "No unsaved changes", color: dirtyCount ? C.amber : "#57524b" },
+      settingsSections, settingsGroups,
+      settingsEmpty: !!s.settingsSearch.trim() && settingsSections.length === 0,
+      settingsDirty: { text: dirtyCount ? dirtyCount + " unsaved change(s)" : "No unsaved changes", color: dirtyCount ? C.amber : "#57524b" },
       sandboxSections, sandboxEmpty: sq && sandboxSections.length === 0,
       sandboxDirty: { text: sbDirtyCount ? sbDirtyCount + " unsaved" : "No unsaved changes", color: sbDirtyCount ? C.amber : "#57524b" },
       sandboxCats: s.sandbox.map((c) => ({ name: c.name, count: c.sections.reduce((n, x) => n + x.fields.length, 0), go: () => this.setState({ sandboxCat: c.name, sandboxSearch: "" }), bg: !sq && s.sandboxCat === c.name ? "#221e18" : "transparent", color: !sq && s.sandboxCat === c.name ? C.amber : "#a9a29a" })),
@@ -1724,6 +1780,7 @@ class Component extends DCLogic {
         broadcast: s.broadcast, onBroadcast: (e) => this.setState({ broadcast: e.target.value }),
         playerSearch: s.playerSearch, onPlayerSearch: (e) => this.setState({ playerSearch: e.target.value }),
         sandboxSearch: s.sandboxSearch, onSandboxSearch: (e) => this.setState({ sandboxSearch: e.target.value }),
+        settingsSearch: s.settingsSearch, onSettingsSearch: (e) => this.setState({ settingsSearch: e.target.value }),
         modSearch: s.modSearch, onModSearch: (e) => this.setState({ modSearch: e.target.value }),
         logSearch: s.logSearch, onLogSearch: (e) => this.setState({ logSearch: e.target.value }),
         consoleInput: s.consoleInput, onConsoleInput: (e) => this.setState({ consoleInput: e.target.value }), onConsoleKey: this.onConsoleKey,

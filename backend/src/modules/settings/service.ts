@@ -28,6 +28,11 @@ export interface SettingField {
   desc?: string;
   min?: number;
   max?: number;
+  step?: number;
+  /** Enum choices as display labels; the ini stores the matching number. */
+  options?: string[];
+  /** Operator-facing caution for destructive or self-locking changes. */
+  warning?: string;
   restart?: boolean;
   secret?: boolean;
   configured?: boolean;
@@ -52,6 +57,9 @@ export async function getSettings(): Promise<SettingGroup[]> {
       desc: def.desc,
       min: def.min,
       max: def.max,
+      step: def.step,
+      options: def.options,
+      warning: def.warning,
       restart: def.restart,
       secret: def.secret,
     };

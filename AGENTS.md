@@ -90,6 +90,7 @@ ZPanel/                               <- repo root
     ├── .env.example                  <- annotated config template (placeholders only)
     ├── docs/                         <- deep-dive docs (architecture, API, security, AMP)
     ├── scripts/seed-admin.ts         <- bootstrap/reset a panel user (server-side only)
+    │   generate-settings-schema.ts   <- regenerate the .ini schema from PZ's comments (§8a)
     │
     ├── src/
     │   ├── server.ts                 <- process entry: boot, timers, graceful shutdown
@@ -121,7 +122,8 @@ ZPanel/                               <- repo root
     │       ├── server/               <- overview, metrics history, lifecycle, scheduled ops
     │       ├── players/              <- online players + moderation, confirm-after-mutate
     │       ├── whitelist/            <- PZ whitelist via RCON + DB confirmation (§10, §11)
-    │       ├── settings/             <- schema-driven <name>.ini editor (allowlist of keys)
+    │       ├── settings/             <- <name>.ini editor: schema.generated.ts
+    │       │                            (GENERATED, §8a) + categories.ts + types.ts
     │       ├── sandbox/              <- <name>_SandboxVars.lua editor: schema.generated.ts
     │       │                            (GENERATED, §8b) + categories.ts + types.ts
     │       ├── mods/                 <- Workshop/Mods model + associations store (§9)
@@ -284,6 +286,44 @@ Rules:
 - ACL assumption in production: the panel user has rw on exactly the two config
   files (+ backups dir), read elsewhere. Code must tolerate EACCES with a clean
   `CONFIG_WRITE_FAILED`/forbidden error, not crash.
+
+## 8a. Server settings (`<name>.ini`)
+
+- **Schema location & provenance.** `src/modules/settings/schema.generated.ts`
+  is GENERATED — do not hand-edit. `scripts/generate-settings-schema.ts` parses
+  a server-generated `<name>.ini` and lifts PZ's own metadata out of its `#`
+  comments: description, `Min: x Max: y Default: z`, and inline enum legends in
+  both PZ spellings (`1=Hidden 2=Friends` and `1 - ban, 2 - kick`). Grouping,
+  labels, secrets and restart/live semantics are hand-maintained in
+  `categories.ts`. Currently **142 keys across 16 groups**.
+- **Generate from the repo fixture, never from a production file.**
+  `test/fixtures/servertest.ini` is the source (fake data, secrets already
+  redacted). Only METADATA is emitted — never a sample VALUE. A leaked value
+  would put a real server's config, or a password, into Git.
+  `test/settings-schema.test.ts` asserts no sample value appears in the output.
+- **It is an ALLOWLIST, not an arbitrary ini editor.** A key absent from the
+  schema is never written, and unknown ini content is preserved by patch
+  semantics. Per-kind validation is authoritative server-side: PZ's own
+  min/max, int-ness, enum membership, and a hard rejection of CR/LF in text
+  (a newline would smuggle a second key into the file).
+- **`Mods` / `WorkshopItems` are excluded and must stay excluded**
+  (`EXCLUDED_KEYS`). The Mods page owns them (§9); exposing them here would let
+  a settings save overwrite the mod list with a stale browser copy. Tests pin
+  this.
+- **Never claim `live` without verifying it.** Every field is either `live`
+  (a runtime `changeoption` + `reloadoptions` is known to take effect) or
+  `restart: true`. Default is `restart` — being wrong in that direction is
+  harmless; claiming a change applied when it did not is fabricated data
+  (§1 rule 18). Promote a key to `live` only after testing it on a real server,
+  and add it to `POLICY`.
+- **Saves send only the CHANGED keys.** With the schema covering the whole file,
+  posting every field would rewrite the entire allowlisted surface from a
+  possibly stale page. The frontend sends `{ key: value }` for dirty fields only.
+- Keys PZ writes only in some configurations (e.g. `AutoCreateUserInWhiteList`)
+  are declared by hand in `EXTRA_FIELDS`. As with sandbox, a field absent from
+  the live file is never displayed and never introduced.
+- Any schema, generator, grouping or validation change REQUIRES updated
+  `test/settings-schema.test.ts` (coverage, containment, honesty of semantics).
 
 ## 8b. Sandbox settings (Build 42)
 
@@ -549,7 +589,7 @@ running them against production.
   npm run lint && npm run typecheck && npm test && npm run build
   ```
 
-- Current suite: 20 files / 234 tests. **This count is non-authoritative and
+- Current suite: 21 files / 259 tests. **This count is non-authoritative and
   expected to grow** — never treat "the number of tests" as an invariant, but a
   *drop* without explanation means something was deleted.
 - Changes that REQUIRE new/updated tests:
@@ -562,6 +602,7 @@ running them against production.
   - runtime adapter or capability changes (`runtime*.test.ts`,
     `no-amp-coupling.test.ts`)
   - any filesystem mutation path (`ini.test.ts`, `sandbox.test.ts`)
+  - server-settings schema/generator/grouping (`settings-schema.test.ts`)
   - Mods/Workshop semantics (`mods.test.ts`, `mapping-lock.test.ts`)
   - RCON commands/parsers/mutation semantics (`rcon-*.test.ts`)
   - API contract changes (status codes, payload shapes)
