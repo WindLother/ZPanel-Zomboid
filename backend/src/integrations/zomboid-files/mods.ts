@@ -60,7 +60,24 @@ export interface WorkshopItem {
   sizeBytes: number | null;
   /** false when Steam's manifest was unreadable, so `downloaded` is a guess-free unknown. */
   installStateKnown: boolean;
+  /** ISO timestamp of the version published on the Workshop, when known. */
+  latestAt: string | null;
+  /** When the last update check ran; null = never checked since panel start. */
+  updateCheckedAt: string | null;
 }
+
+/** Result of the most recent update check for one item. */
+export interface UpdateInfo {
+  updateStatus: ModUpdateStatus;
+  latestAt: string | null;
+  updateCheckedAt: string | null;
+}
+
+export const UNKNOWN_UPDATE: UpdateInfo = {
+  updateStatus: 'unknown',
+  latestAt: null,
+  updateCheckedAt: null,
+};
 
 /** Per-item install facts supplied by the caller (from Steam's manifest). */
 export interface InstallInfo {
@@ -103,6 +120,7 @@ export function buildWorkshopItems(
   raw: ModsRaw,
   resolve: (workshopId: string) => ResolvedWorkshopItem,
   installOf: (workshopId: string) => InstallInfo = () => UNKNOWN_INSTALL,
+  updateOf: (workshopId: string) => UpdateInfo = () => UNKNOWN_UPDATE,
 ): WorkshopItem[] {
   const items: WorkshopItem[] = [];
   const attributed = new Set<string>();
@@ -122,9 +140,9 @@ export function buildWorkshopItems(
       enabledModIds,
       modIdsResolved: r.resolved,
       enabled: enabledModIds.length > 0,
-      updateStatus: 'unknown',
       loadOrder: items.length + 1,
       ...installOf(workshopId),
+      ...updateOf(workshopId),
     });
   }
 
@@ -147,6 +165,8 @@ export function buildWorkshopItems(
       manifest: null,
       sizeBytes: null,
       installStateKnown: true,
+      latestAt: null,
+      updateCheckedAt: null,
       loadOrder: items.length + 1,
     });
   }

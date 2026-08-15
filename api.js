@@ -348,13 +348,11 @@ export const modsApi = {
   // installed content version, and needsUpdate (null when Project Zomboid did
   // not name that item — never guessed).
   checkUpdates: () => post("/api/mods/check-updates", {}),
-  async updateAll() {
-    // Content updates go through the runtime's server-update path (when the
-    // runtime supports updates), not a parallel SteamCMD. Return the current
-    // list unchanged.
-    await post("/api/mods/update", {}).catch(() => {});
-    return get("/api/mods");
-  },
+  // Reports HOW pending Workshop updates get applied; it does not download
+  // anything (Project Zomboid fetches Workshop content itself at startup).
+  // Returns { ok, applyVia, pending[], checked, message } — the caller must not
+  // treat this as "updated".
+  applyUpdates: () => post("/api/mods/update", {}),
 };
 
 export const logsApi = {

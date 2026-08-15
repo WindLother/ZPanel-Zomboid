@@ -4,6 +4,7 @@ import { requireAuth, requireRole, actor } from '../../plugins/auth';
 import * as audit from '../activity/service';
 import {
   addWorkshopItem,
+  applyModUpdates,
   checkModUpdates,
   listWorkshopItems,
   lookupWorkshop,
@@ -93,10 +94,17 @@ export async function modsRoutes(app: FastifyInstance): Promise<void> {
     return result;
   });
 
-  // Content updates are applied through the runtime's own update mechanism
-  // (see POST /api/server/update) to avoid a parallel SteamCMD racing it.
-  app.post('/api/mods/update', { preHandler: requireRole('admin') }, async () => ({
-    ok: false,
-    message: 'Mod/game content updates are applied via the Server Update action. Use POST /api/server/update.',
-  }));
+  // Applying updates: the runtime does it when it owns updates (AMP), otherwise
+  // Project Zomboid fetches Workshop content at startup, so a restart is the
+  // real mechanism. Never reports success for something that did not happen.
+  app.post('/api/mods/update', { preHandler: requireRole('admin') }, async (req) => {
+    const result = await applyModUpdates();
+    audit.record({
+      ...actor(req),
+      action: 'mods.update',
+      success: result.ok,
+      details: { applyVia: result.applyVia, pending: result.pending },
+    });
+    return result;
+  });
 }

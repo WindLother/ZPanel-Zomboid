@@ -427,7 +427,14 @@ sources:
 The result names each mod with both dates, e.g. *"1 of 22 Workshop item(s) need
 updating: CleanUI [B42]"* — installed 2026-08-14 → workshop 2026-08-15. An item
 that no source could rule on is reported as **could not determine**, never
-guessed.
+guessed. The Mods table keeps showing that status after the check.
+
+**Applying updates.** Project Zomboid downloads Workshop content **itself at
+startup**, so *Update Mods* does not fetch anything — a panel-side SteamCMD run
+would race the process that owns the install. It lists what is pending and
+offers a **restart**, which is what actually applies them. It never reports a
+download that did not happen, and it tells you when no check has run yet rather
+than claiming nothing is pending.
 
 Mod IDs are validated (letters, digits, `_`, `.`, `-` only) and Workshop IDs
 must be 6–12 digit numbers — semicolons, newlines, paths, and shell metacharacters

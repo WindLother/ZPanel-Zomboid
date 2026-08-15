@@ -1382,7 +1382,53 @@ class Component extends DCLogic {
     });
     this.logActivity("checked Workshop mods for updates", r.checked + " item(s) checked");
   };
-  updateMods = async () => { const out = this.state.mods.filter((m) => m.updateStatus === "update_available").length; if (!out) { this.toast("info", "Nothing to update"); return; } this.toast("info", "Updating " + out + " mod(s)…"); this.setState({ mods: await this.state.api.modsApi.updateAll() }); this.toast("ok", "Mods updated", "Restart the server to load new versions"); this.logActivity("updated " + out + " Workshop mod(s)"); };
+  /**
+   * Apply pending Workshop updates.
+   *
+   * Two bugs used to live here. `updateStatus` was never populated by anything,
+   * so the count was always 0 and this said "Nothing to update" even right
+   * after a check reported an outdated mod. And the call it made could not
+   * download anything, yet it toasted "Mods updated" regardless.
+   *
+   * Project Zomboid fetches Workshop content itself at startup, so a restart is
+   * what actually applies updates. This now reports that truthfully and offers
+   * the restart instead of faking success.
+   */
+  updateMods = async () => {
+    const pending = this.state.mods.filter((m) => m.updateStatus === "update_available");
+    const everChecked = this.state.mods.some((m) => m.updateCheckedAt);
+    if (!pending.length) {
+      if (!everChecked) { this.toast("info", "No update check has run yet", "Use “Check For Updates” first."); return; }
+      this.toast("ok", "Nothing to update", "The last check found no newer versions.");
+      return;
+    }
+    let res;
+    try { res = await this.state.api.modsApi.applyUpdates(); }
+    catch (e) { this.toast("err", "Could not apply updates", (e && e.message) || ""); return; }
+
+    const names = pending.map((m) => m.name || (m.modIds || [])[0] || m.workshopId);
+    if (res && res.ok) {
+      this.toast("ok", "Update started", res.message);
+      this.logActivity("applied " + pending.length + " Workshop mod update(s)");
+      return;
+    }
+    // Not an error — the server told us how updates actually get applied.
+    this.openDialog({
+      type: "modupdate", kicker: "STEAM WORKSHOP", kickerColor: C.amber, border: "#5a4520",
+      title: "Restart required to apply " + pending.length + " update(s)",
+      body: (res && res.message) || "Project Zomboid downloads Workshop updates when it starts.",
+      showTarget: true, targetLabel: "PENDING", target: names.join("\n"),
+      warning: this.onlineCount() + " player(s) are currently connected.",
+      confirmLabel: "Restart Server", confirmBg: "#2a2113", confirmBorder: "#6b5628", confirmColor: "#e8bf74",
+      onConfirm: async () => {
+        this.closeDialog();
+        try { await this.state.api.serverApi.restart(); }
+        catch (e) { this.toast("err", "Restart failed", (e && e.message) || ""); return; }
+        this.toast("warn", "Restarting server", "Workshop updates download during startup.");
+        this.logActivity("restarted the server to apply " + pending.length + " mod update(s)");
+      },
+    });
+  };
 
   /* ----------------------------------------------- PANEL users & access */
   loadUsers = async () => {

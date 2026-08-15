@@ -6,7 +6,9 @@ import {
   type ResolvedWorkshopItem,
   type WorkshopItem,
   type InstallInfo,
+  type UpdateInfo,
   UNKNOWN_INSTALL,
+  UNKNOWN_UPDATE,
 } from '../../integrations/zomboid-files/mods';
 import { discoverWorkshopMods } from '../../integrations/zomboid-files/workshop-discovery';
 import {
@@ -80,6 +82,29 @@ async function resolveAll(raw: ModsRaw): Promise<Map<string, ResolvedWorkshopIte
 
 const EMPTY: ResolvedWorkshopItem = { modIds: [], name: null, author: null, thumbnail: null, lastUpdate: null, resolved: false };
 
+/**
+ * Last update-check result per Workshop ID.
+ *
+ * `checkModUpdates` is the only writer. Without this the mod list's
+ * `updateStatus` was permanently 'unknown', so the Update button could never
+ * find anything to do no matter what the check reported — the panel said
+ * "CleanUI needs update" and "nothing to update" in the same breath.
+ *
+ * Deliberately in-memory: a panel restart resets everything to 'unknown',
+ * which is honest (we genuinely do not know until a check runs again).
+ */
+const updateCache = new Map<string, UpdateInfo>();
+
+/** Update state recorded by the most recent check, if any. */
+function updateInfoFor(workshopId: string): UpdateInfo {
+  return updateCache.get(workshopId) ?? UNKNOWN_UPDATE;
+}
+
+/** Items the last check flagged as needing a newer version. */
+export function pendingUpdateIds(): string[] {
+  return [...updateCache.entries()].filter(([, u]) => u.updateStatus === 'update_available').map(([id]) => id);
+}
+
 /** Steam's install facts per Workshop ID, or "unknown" when unreadable. */
 async function installLookup(): Promise<(id: string) => InstallInfo> {
   const known = await workshopManifestAvailable();
@@ -101,7 +126,7 @@ async function installLookup(): Promise<(id: string) => InstallInfo> {
 export async function listWorkshopItems(): Promise<WorkshopItem[]> {
   const raw = await readLists();
   const [resolved, installOf] = await Promise.all([resolveAll(raw), installLookup()]);
-  return buildWorkshopItems(raw, (id) => resolved.get(id) ?? EMPTY, installOf);
+  return buildWorkshopItems(raw, (id) => resolved.get(id) ?? EMPTY, installOf, updateInfoFor);
 }
 
 /** Resolve a Workshop item's known Mod IDs (disk first, then association). */
@@ -488,6 +513,17 @@ export async function checkModUpdates(timeoutMs = 8000): Promise<ModUpdateReport
   const outdated = findings.filter((f) => f.needsUpdate === true);
   const namedByServer = named.length > 0;
 
+  // Persist what we learned so the mod list and the Update action agree with
+  // what the check just reported.
+  const checkedAt = new Date().toISOString();
+  for (const f of findings) {
+    updateCache.set(f.workshopId, {
+      updateStatus: f.needsUpdate === true ? 'update_available' : f.needsUpdate === false ? 'updated' : 'unknown',
+      latestAt: f.latestAt,
+      updateCheckedAt: checkedAt,
+    });
+  }
+
   const compared = findings.filter((f) => f.source === 'steam').length;
   const names = outdated.map((f) => f.publishedTitle || f.name || f.modIds[0] || f.workshopId);
 
@@ -524,5 +560,48 @@ export async function checkModUpdates(timeoutMs = 8000): Promise<ModUpdateReport
     items: findings,
     message,
     notes: observed.notes,
+  };
+}
+
+export interface ModUpdateApplyResult {
+  /** true only when this endpoint itself fetched content. It never does. */
+  ok: boolean;
+  /** How pending Workshop updates actually reach the server. */
+  applyVia: 'restart';
+  /** Workshop IDs the last check flagged. Empty when nothing is pending. */
+  pending: string[];
+  /** Whether an update check has run at all since the panel started. */
+  checked: boolean;
+  message: string;
+}
+
+/**
+ * Report how to apply pending Workshop updates.
+ *
+ * This deliberately does NOT download anything. Project Zomboid fetches
+ * Workshop content ITSELF at startup — verified in the server log: on boot it
+ * runs one item query across the whole collection and downloads everything
+ * flagged NeedsUpdate. A parallel SteamCMD run from the panel would race the
+ * process that owns the install.
+ *
+ * So the truthful answer is "restart to apply", and this returns exactly that
+ * plus which items are pending. It never reports a success that did not happen
+ * (AGENTS.md §1 rule 18). Runtimes that own content updates have their own
+ * Server Update action; this module stays runtime-agnostic by design
+ * (mods.test.ts forbids a runtime import here).
+ */
+export async function applyModUpdates(): Promise<ModUpdateApplyResult> {
+  const pending = pendingUpdateIds();
+  const checked = updateCache.size > 0;
+  return {
+    ok: false,
+    applyVia: 'restart',
+    pending,
+    checked,
+    message: pending.length
+      ? `Project Zomboid downloads Workshop updates when it starts. Restart the server to apply ${pending.length} pending update(s).`
+      : checked
+        ? 'No Workshop updates are pending — the last check found nothing newer.'
+        : 'Run "Check for updates" first: no check has run since the panel started, so nothing is known to be pending.',
   };
 }

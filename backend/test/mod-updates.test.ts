@@ -198,3 +198,61 @@ describe('the report contract the UI depends on', () => {
     expect(fn).toMatch(/installed " \+ d\(i\.installedAt\) \+ " → workshop " \+ d\(i\.latestAt\)/);
   });
 });
+
+/**
+ * Regression for the reported bug: "Check for updates" said CleanUI needs an
+ * update, then "Update Mods" said "nothing to update".
+ *
+ * Two defects: updateStatus was hardcoded 'unknown' and no code ever wrote it,
+ * so the Update button's filter always matched zero; and the update call could
+ * not download anything yet toasted "Mods updated" regardless.
+ */
+describe('check result reaches the mod list and the Update action', () => {
+  const svc = fs.readFileSync(path.join(__dirname, '..', 'src', 'modules', 'mods', 'service.ts'), 'utf8');
+  const modsTs = fs.readFileSync(path.join(__dirname, '..', 'src', 'integrations', 'zomboid-files', 'mods.ts'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', '..', 'Zomboid_Server_Control.dc.html'), 'utf8');
+  const apijs = fs.readFileSync(path.join(__dirname, '..', '..', 'api.js'), 'utf8');
+
+  it('the check WRITES its verdict where the list can read it', () => {
+    expect(svc).toMatch(/const updateCache = new Map<string, UpdateInfo>\(\)/);
+    expect(svc).toMatch(/updateCache\.set\(f\.workshopId/);
+    expect(svc).toMatch(/updateStatus: f\.needsUpdate === true \? 'update_available'/);
+  });
+
+  it('the list applies that cache instead of hardcoding unknown', () => {
+    expect(svc).toMatch(/buildWorkshopItems\(raw, \(id\) => resolved\.get\(id\) \?\? EMPTY, installOf, updateInfoFor\)/);
+    // the literal that caused the bug must no longer be the only source of truth
+    expect(modsTs).toMatch(/updateOf: \(workshopId: string\) => UpdateInfo/);
+  });
+
+  it('updateStatus round-trips: needsUpdate -> update_available -> pendingUpdateIds', () => {
+    expect(svc).toMatch(/export function pendingUpdateIds\(\)/);
+    expect(svc).toMatch(/u\.updateStatus === 'update_available'/);
+  });
+
+  it('the update endpoint never claims a success it did not perform', () => {
+    expect(svc).toMatch(/ok: false/);
+    expect(svc).toMatch(/applyVia: 'restart'/);
+    // and it must not pretend when nothing was ever checked
+    expect(svc).toContain('no check has run since the panel started');
+  });
+
+  it('the UI stops reporting "Mods updated" unconditionally', () => {
+    const fn = html.slice(html.indexOf('updateMods = async'), html.indexOf('/* ----------------------------------------------- PANEL users'));
+    expect(fn).not.toMatch(/toast\("ok", "Mods updated"/);
+    expect(fn).toMatch(/if \(res && res\.ok\)/);         // success only when the server says so
+    expect(fn).toContain('Restart required to apply');    // otherwise offer the real remedy
+    expect(fn).toContain('serverApi.restart');
+  });
+
+  it('distinguishes "never checked" from "nothing pending"', () => {
+    const fn = html.slice(html.indexOf('updateMods = async'), html.indexOf('/* ----------------------------------------------- PANEL users'));
+    expect(fn).toContain('No update check has run yet');
+    expect(fn).toContain('The last check found no newer versions.');
+  });
+
+  it('api.js no longer swallows the update response', () => {
+    expect(apijs).not.toMatch(/post\("\/api\/mods\/update", \{\}\)\.catch/);
+    expect(apijs).toContain('applyUpdates: () => post("/api/mods/update", {})');
+  });
+});

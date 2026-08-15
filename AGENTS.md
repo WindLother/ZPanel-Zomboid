@@ -423,6 +423,23 @@ Invariants:
   (`steam` | `server` | `unknown`) so the UI can be honest (§1 rule 18).
 - `GET /api/mods` stays local-only (no outbound call) and carries the install
   facts; the Workshop comparison happens only on the explicit check action.
+- **The check must WRITE its verdict where the list can read it.** `updateStatus`
+  used to be hardcoded `'unknown'` with no writer anywhere, so the Update action
+  filtered on it and always found zero — the panel would say "CleanUI needs
+  update" and "nothing to update" in the same session. `checkModUpdates` now
+  populates an in-memory cache that `listWorkshopItems` applies. Keep any new
+  status field written by something, or it is decoration.
+- **`POST /api/mods/update` downloads nothing, and must never claim it did.**
+  Project Zomboid fetches Workshop content itself at STARTUP (verified in the
+  log: one item query across the collection on boot, then downloads for anything
+  flagged NeedsUpdate). A panel-side SteamCMD run would race the process that
+  owns the install. The endpoint reports `{ ok: false, applyVia: 'restart',
+  pending[] }` and the UI offers the restart. It also distinguishes "no check has
+  run" from "nothing pending" — those are different answers.
+- The mods module stays runtime-agnostic: `mods.test.ts` forbids importing
+  `integrations/runtime` here, so the update-apply path must not branch on
+  runtime capabilities. "Restart applies Workshop updates" is true for every
+  runtime because it is the game's own behaviour.
 - Format changes in PZ's log lines break identification silently, so
   `test/mod-updates.test.ts` pins the verbatim shapes captured from a live
   Build 42 server. Update those fixtures from a real log, never from memory.
@@ -622,7 +639,7 @@ running them against production.
   npm run lint && npm run typecheck && npm test && npm run build
   ```
 
-- Current suite: 22 files / 282 tests. **This count is non-authoritative and
+- Current suite: 22 files / 289 tests. **This count is non-authoritative and
   expected to grow** — never treat "the number of tests" as an invariant, but a
   *drop* without explanation means something was deleted.
 - Changes that REQUIRE new/updated tests:
