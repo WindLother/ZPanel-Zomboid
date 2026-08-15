@@ -16,7 +16,7 @@ import type {
  * configured server name, so it never sees the AMP server).
  *
  * durableServerSettings=true: nothing regenerates the PZ config files here, so
- * panel writes to zmochileiros.ini / SandboxVars are durable.
+ * panel writes to <servername>.ini / SandboxVars are durable.
  *
  * This adapter sits alongside AmpRuntimeAdapter and StandaloneRuntimeAdapter —
  * none replace each other; PZ_RUNTIME selects one.

@@ -190,12 +190,16 @@ Current adapters and capabilities:
 
 | Adapter | lifecycle | metrics | update | durableServerSettings |
 |---|---|---|---|---|
+| `standalone` (default) | ✘ | ✔ (/proc) | ✘ | ✔ |
 | `systemd` (recommended) | ✔ | ✔ (/proc) | ✘ | ✔ |
 | `amp` (optional) | ✔ | ✔ | ✔ | ✘ (AMP regenerates the ini on restart) |
-| `standalone` | ✘ | ✔ (/proc) | ✘ | ✔ |
 
 Rules:
 
+- **`standalone` is the default**, and an unknown `PZ_RUNTIME` falls back to it —
+  never to AMP or systemd. The default must stay the adapter that cannot act on
+  a service the operator did not explicitly opt into. Tests pin
+  `PZ_RUNTIME=standalone` so no suite can reach a real unit or AMP instance.
 - Selection is server-side only (`PZ_RUNTIME`); the `Runtime` facade in
   `integrations/runtime/index.ts` gates operations by capability and throws
   `NOT_SUPPORTED` (HTTP 501) for unsupported ones. **Never assume a capability**

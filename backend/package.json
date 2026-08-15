@@ -1,7 +1,7 @@
 {
   "name": "zpanel-backend",
   "version": "1.0.0",
-  "description": "Production backend for the Project Zomboid (AMP) server control panel",
+  "description": "Backend for ZPanel, a self-hosted Project Zomboid dedicated server control panel",
   "license": "MIT",
   "private": true,
   "type": "commonjs",

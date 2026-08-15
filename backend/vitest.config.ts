@@ -7,6 +7,9 @@ export default defineConfig({
     // env.ts requires PZ_SERVER_DIR; provide safe test values.
     env: {
       NODE_ENV: 'test',
+      // Pinned so suites never depend on the PZ_RUNTIME default, and so no
+      // test can reach a real systemd unit or AMP instance.
+      PZ_RUNTIME: 'standalone',
       PZ_SERVER_DIR: '/tmp/zpanel-test/Server',
       PZ_RCON_PASSWORD: 'test',
       SESSION_SECRET: 'test-session-secret-1234567890',

@@ -59,9 +59,14 @@ const EnvSchema = z.object({
   PZ_RCON_PORT: z.coerce.number().int().positive().default(27015),
   PZ_RCON_PASSWORD: z.string().optional(),
 
-  // Which server-runtime adapter to use. 'amp' (default) uses AMP for lifecycle
-  // + metrics; 'standalone' runs without AMP (metrics via /proc, no lifecycle).
-  PZ_RUNTIME: z.enum(['amp', 'standalone', 'systemd', 'none', 'custom']).default('amp'),
+  // Which server-runtime adapter to use.
+  //   standalone (default) - assumes nothing: metrics via /proc, lifecycle is
+  //                          honestly unsupported. Works on any host.
+  //   systemd              - recommended for production: controls one fixed unit.
+  //   amp                  - optional, for servers managed by CubeCoders AMP.
+  // The default is deliberately the adapter that needs no extra configuration
+  // and can never act on a service the operator did not opt into.
+  PZ_RUNTIME: z.enum(['amp', 'standalone', 'systemd', 'none', 'custom']).default('standalone'),
   // Fixed systemd unit the SystemdRuntimeAdapter controls. Server-side config
   // only — NEVER derived from a request. Verbs are an internal allowlist.
   SYSTEMD_UNIT: z.string().default('project-zomboid-zpanel.service'),
@@ -69,7 +74,7 @@ const EnvSchema = z.object({
   AMP_BASE_URL: z.string().optional(),
   AMP_USERNAME: z.string().optional(),
   AMP_PASSWORD: z.string().optional(),
-  AMP_INSTANCE_NAME: z.string().default('ZMochileiros01'),
+  AMP_INSTANCE_NAME: z.string().optional(),
   AMP_INSTANCE_ID: z.string().optional(),
   AMP_SYSTEM_USER: z.string().default('amp'),
   AMP_ALLOW_CLI: bool(true),

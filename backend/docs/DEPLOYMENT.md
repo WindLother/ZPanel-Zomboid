@@ -38,10 +38,11 @@ Run as a dedicated non-root user (e.g. `zpanel`). Grant only what it needs:
 - **Read-only** `db/servertest.db` (`setfacl -m u:zpanel:r ...`).
 - **Lifecycle**: a tight sudoers rule, only for the exact command:
   ```
-  zpanel ALL=(amp) NOPASSWD: /usr/bin/ampinstmgr --StartInstance ZMochileiros01, \
-    /usr/bin/ampinstmgr --StopInstance ZMochileiros01, \
-    /usr/bin/ampinstmgr --RestartInstance ZMochileiros01, \
-    /usr/bin/ampinstmgr --UpgradeInstance ZMochileiros01
+  # AMP runtime only (PZ_RUNTIME=amp). Substitute YOUR instance name.
+  zpanel ALL=(amp) NOPASSWD: /usr/bin/ampinstmgr --StartInstance <AMP_INSTANCE_NAME>, \
+    /usr/bin/ampinstmgr --StopInstance <AMP_INSTANCE_NAME>, \
+    /usr/bin/ampinstmgr --RestartInstance <AMP_INSTANCE_NAME>, \
+    /usr/bin/ampinstmgr --UpgradeInstance <AMP_INSTANCE_NAME>
   ```
   (Or configure AMP API credentials and set `AMP_ALLOW_CLI=false` to avoid sudo
   entirely.)
@@ -59,7 +60,7 @@ ExecStart=/usr/bin/node dist/server.js
 Restart=on-failure
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=/srv/zpanel/backend/data /home/amp/.ampdata/instances/ZMochileiros01/project-zomboid/380870/Zomboid/Server
+ReadWritePaths=/srv/zpanel/backend/data <PZ_SERVER_DIR>
 ```
 
 ## Bootstrap

@@ -14,7 +14,9 @@ import { err } from '../../shared/errors';
  */
 
 function ampArgv(verb: string): { cmd: string; args: string[] } {
+  // No instance default exists: the operator must name their own AMP instance.
   const inst = env.AMP_INSTANCE_NAME;
+  if (!inst) throw err.amp('AMP_INSTANCE_NAME is not configured.');
   const base = [verb, inst];
   // Run as the AMP owner. If we already are that user, call directly.
   if (os.userInfo().username === env.AMP_SYSTEM_USER) {

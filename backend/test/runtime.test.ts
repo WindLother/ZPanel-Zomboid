@@ -19,8 +19,17 @@ describe('runtime adapter selection', () => {
       expect(r).toBeInstanceOf(StandaloneRuntimeAdapter);
     }
   });
-  it('defaults to AMP for an unknown runtime name', () => {
-    expect(createRuntime('bogus').name).toBe('amp');
+  // An unknown/misconfigured runtime must degrade to the adapter that cannot act
+  // on anything it was not explicitly told about — never to one that assumes a
+  // control plane (AMP, systemd) the host may not even run.
+  it('falls back to standalone for an unknown runtime name', () => {
+    expect(createRuntime('bogus').name).toBe('standalone');
+  });
+
+  it('the default runtime needs no extra configuration and grants no lifecycle', () => {
+    const def = createRuntime();
+    expect(def.name).toBe('standalone');
+    expect(def.capabilities().lifecycle).toBe(false);
   });
 });
 

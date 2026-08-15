@@ -32,8 +32,10 @@ export function createRuntime(name: string = env.PZ_RUNTIME): ServerRuntimeAdapt
     case 'custom':
       return new StandaloneRuntimeAdapter();
     default:
-      logger.warn({ name }, `unknown PZ_RUNTIME "${name}"; defaulting to 'amp'`);
-      return new AmpRuntimeAdapter();
+      // Fall back to the adapter that cannot act on anything it was not told
+      // about, rather than assuming a control plane the host may not run.
+      logger.warn({ name }, `unknown PZ_RUNTIME "${name}"; defaulting to 'standalone'`);
+      return new StandaloneRuntimeAdapter();
   }
 }
 

@@ -93,13 +93,18 @@ abstraction selected by the `PZ_RUNTIME` environment variable:
 
 ```
 ServerRuntimeAdapter
-├── systemd     — recommended: controls a fixed systemd unit, metrics via /proc
-├── amp         — optional: CubeCoders AMP owns lifecycle/metrics/updates
-└── standalone  — metrics-only via /proc; lifecycle managed outside the panel
+├── standalone  — DEFAULT: metrics-only via /proc; lifecycle managed outside the
+│                 panel. Assumes nothing about the host, needs no extra config.
+├── systemd     — recommended for production: controls one fixed systemd unit
+└── amp         — optional: CubeCoders AMP owns lifecycle/metrics/updates
 ```
 
-AMP is **supported but never required**. The rest of the backend depends only on
-the adapter interface.
+**ZPanel is not tied to AMP.** AMP is one optional adapter; the default runtime
+assumes no control plane at all, and a misconfigured `PZ_RUNTIME` falls back to
+`standalone` rather than reaching for something the host may not run. Nothing
+outside `integrations/amp/` and `runtime/amp.adapter.ts` references AMP, and
+`test/no-amp-coupling.test.ts` fails the build if that ever changes. If you do
+not use AMP, you can ignore every `AMP_*` variable in this document.
 
 ## Technology stack
 
@@ -195,7 +200,7 @@ template. **Never commit a real `.env`.**
 | `PANEL_ORIGINS` | yes in practice | Comma-separated allowed browser origins (CORS + CSRF origin check) | `https://panel.example.com` |
 | `COOKIE_SECURE` | no (default `false`) | `true` when the panel is served over HTTPS | `true` |
 | `SESSION_SECRET` | **yes in production** | 32+ byte random string signing session cookies | `<strong-secret>` |
-| `PZ_RUNTIME` | no (default `amp`) | Runtime adapter: `systemd`, `amp`, or `standalone` | `systemd` |
+| `PZ_RUNTIME` | no (default `standalone`) | Runtime adapter: `standalone` (assumes nothing), `systemd` (recommended), or `amp` (optional) | `systemd` |
 | `SYSTEMD_UNIT` | with `systemd` runtime | Fixed PZ unit the panel controls — never request-derived | `project-zomboid-zpanel.service` |
 | `PZ_SERVER_NAME` | yes | PZ config-set name (`<name>.ini`, `db/<name>.db`) | `myserver` |
 | `PZ_SERVER_DIR` | yes | Directory containing `<name>.ini` / `<name>_SandboxVars.lua` | `/srv/project-zomboid/data/Zomboid/Server` |

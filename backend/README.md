@@ -1,20 +1,26 @@
 # ZPanel Backend
 
-Production backend for the **Project Zomboid** (CubeCoders **AMP**) server control
-panel. It replaces the frontend's `mockApi.js` with a secure aggregation layer over
-three real data sources:
+Backend for **ZPanel**, a self-hosted control panel for **Project Zomboid**
+dedicated servers. It is a secure aggregation layer over three real data
+sources:
 
 ```
                      BACKEND (Fastify + TypeScript)
                         │
           ┌─────────────┼─────────────┐
           ▼             ▼             ▼
-        RCON          AMP           FILES + DB
-   game runtime   lifecycle      servertest.ini
-   players        CPU/RAM        SandboxVars.lua
-   moderation     start/stop     Mods / Workshop
-   save/broadcast update         Logs, servertest.db
+        RCON     RUNTIME ADAPTER    FILES + DB
+   game runtime   lifecycle       <name>.ini
+   players        CPU/RAM         <name>_SandboxVars.lua
+   moderation     start/stop      Mods / Workshop
+   save/broadcast update          Logs, <name>.db
 ```
+
+The runtime adapter is pluggable (`PZ_RUNTIME`): **`standalone`** (default,
+assumes nothing), **`systemd`** (recommended for production), or **`amp`** for
+hosts managed by CubeCoders AMP. AMP is entirely optional — nothing outside
+`integrations/amp/` and `runtime/amp.adapter.ts` knows it exists, and
+`test/no-amp-coupling.test.ts` enforces that.
 
 The browser never talks to RCON, AMP, the filesystem, or the shell — every action
 goes through this backend, which validates input, enforces authentication and
@@ -32,15 +38,14 @@ Lifecycle and metrics go through a pluggable **runtime adapter** selected by
 | CPU / RAM / uptime / state | Runtime adapter — AMP HTTP API, else OS `/proc` of the PZ process |
 | Online players, save world, broadcast | RCON `players` / `save` / `servermsg` |
 | Kick / ban / access level / powers / items / XP / vehicles | RCON (allowlisted commands) |
-| Offline players, whitelist, bans | read-only SQLite `db/servertest.db` |
+| Offline players, whitelist, bans | read-only SQLite `db/<name>.db` |
 | SteamID allow-list | `allowedsteamid` table (read) + RCON `addsteamid`/`removesteamid` |
-| Server settings | `servertest.ini` (read) — **AMP-owned** (see [docs/AMP.md](docs/AMP.md)) |
-| Sandbox settings | `servertest_SandboxVars.lua` (safe direct patch) |
-| Mods | `WorkshopItems=` / `Mods=` in the ini — **AMP-owned** |
+| Server settings | `<name>.ini` (schema-driven read + patch; see AGENTS.md §8a) |
+| Sandbox settings | `<name>_SandboxVars.lua` (safe direct patch) |
+| Mods | `WorkshopItems=` / `Mods=` in the ini (Mods page owns these keys) |
 | Logs | `Zomboid/Logs/*_DebugLog-server.txt` (tail + SSE) |
 | Audit / users / sessions / schedules | panel SQLite database (separate from PZ) |
 
-See [docs/DISCOVERY.md](docs/DISCOVERY.md) for exactly what was found on the real
 server and how these decisions were made.
 
 ## Quick start
@@ -89,7 +94,6 @@ All configuration is via environment variables (see `.env.example`). Highlights:
 
 ## Documentation
 
-- [docs/DISCOVERY.md](docs/DISCOVERY.md) — what the real AMP/PZ environment exposes.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — modules, integrations, data flow.
 - [docs/AMP.md](docs/AMP.md) — AMP integration and config ownership.
 - [docs/SECURITY.md](docs/SECURITY.md) — auth, authorization, CSRF, secrets, limits.
