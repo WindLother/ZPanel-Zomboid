@@ -342,10 +342,12 @@ export const modsApi = {
   async move(workshopId, dir) {
     return (await post("/api/mods/" + encodeURIComponent(workshopId) + "/move", { direction: dir })).items;
   },
-  async checkUpdates() {
-    const r = await post("/api/mods/check-updates", {});
-    return { checked: 0, outdated: r.findings ? r.findings.length : 0, message: r.message };
-  },
+  // Returns the full report: { accepted, verdict, checked, outdated,
+  // namedByServer, items[], message, notes[] }. Each item carries which mod it
+  // is (workshopId + modIds + name), whether Steam has it downloaded, the
+  // installed content version, and needsUpdate (null when Project Zomboid did
+  // not name that item — never guessed).
+  checkUpdates: () => post("/api/mods/check-updates", {}),
   async updateAll() {
     // Content updates go through the runtime's server-update path (when the
     // runtime supports updates), not a parallel SteamCMD. Return the current

@@ -398,6 +398,35 @@ Invariants:
   server's config line (`;`-separated) and must never be able to smuggle in
   extra entries or escape the field.
 
+## 9b. Mod update checks
+
+- **PZ cannot name an outdated mod.** `checkModsNeedUpdate` writes only
+  `CheckModsNeedUpdate: Mods need update.` — a verdict for the whole
+  collection. Any code that reports "N mods need updating" from that alone is
+  giving the operator nothing; that was a real complaint about this panel.
+- Identity and versions come from three sources, in this order of authority:
+  1. **Steam's public Workshop API** (`integrations/steam/workshop-api.ts`) —
+     the published `time_updated` per item. Compared against the installed
+     timestamp, this is what names the stale mods. Optional
+     (`STEAM_WORKSHOP_API`), key-less, bounded by `AbortController`, and it
+     must NEVER make the check fail or hang — offline degrades to (2)/(3).
+  2. **Steam's install manifest** (`zomboid-files/workshop-manifest.ts`,
+     `appworkshop_<appid>.acf`, READ-ONLY) — downloaded yes/no, installed
+     content version, manifest id, size. Absent item = not downloaded; absent
+     FILE = unknown, and the two must stay distinguishable
+     (`installStateKnown`).
+  3. **The game server's log** (`logs/mod-updates.ts`) — `Workshop: …
+     GetItemState()=…|NeedsUpdate|… ID=<id>` lines, the only per-item signal PZ
+     emits, and only while Steam is actively downloading.
+- **`needsUpdate` is `boolean | null`, and `null` means "could not determine".**
+  Never default it to false/true from silence, and always report `source`
+  (`steam` | `server` | `unknown`) so the UI can be honest (§1 rule 18).
+- `GET /api/mods` stays local-only (no outbound call) and carries the install
+  facts; the Workshop comparison happens only on the explicit check action.
+- Format changes in PZ's log lines break identification silently, so
+  `test/mod-updates.test.ts` pins the verbatim shapes captured from a live
+  Build 42 server. Update those fixtures from a real log, never from memory.
+
 ## 10. Authentication, authorization & the two user domains
 
 - **Panel users** live in the panel SQLite DB (`users` table, Argon2id
@@ -593,7 +622,7 @@ running them against production.
   npm run lint && npm run typecheck && npm test && npm run build
   ```
 
-- Current suite: 21 files / 259 tests. **This count is non-authoritative and
+- Current suite: 22 files / 282 tests. **This count is non-authoritative and
   expected to grow** — never treat "the number of tests" as an invariant, but a
   *drop* without explanation means something was deleted.
 - Changes that REQUIRE new/updated tests:
@@ -608,6 +637,7 @@ running them against production.
   - any filesystem mutation path (`ini.test.ts`, `sandbox.test.ts`)
   - server-settings schema/generator/grouping (`settings-schema.test.ts`)
   - Mods/Workshop semantics (`mods.test.ts`, `mapping-lock.test.ts`)
+  - mod update detection / log shapes (`mod-updates.test.ts`, §9b)
   - RCON commands/parsers/mutation semantics (`rcon-*.test.ts`)
   - API contract changes (status codes, payload shapes)
   - frontend user/whitelist dialog wiring (`frontend-userdialog.test.ts`)

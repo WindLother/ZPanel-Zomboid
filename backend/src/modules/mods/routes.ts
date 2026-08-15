@@ -78,7 +78,18 @@ export async function modsRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/api/mods/check-updates', { preHandler: requireRole('moderator') }, async (req) => {
     const result = await checkModUpdates();
-    audit.record({ ...actor(req), action: 'mods.checkUpdates', success: result.accepted, details: { findings: result.findings.length } });
+    audit.record({
+      ...actor(req),
+      action: 'mods.checkUpdates',
+      success: result.accepted,
+      details: {
+        checked: result.checked,
+        outdated: result.outdated,
+        verdict: result.verdict,
+        // Record WHICH items the server named, so the trail is specific too.
+        outdatedIds: result.items.filter((i) => i.needsUpdate === true).map((i) => i.workshopId),
+      },
+    });
     return result;
   });
 

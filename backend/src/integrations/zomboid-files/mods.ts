@@ -46,7 +46,38 @@ export interface WorkshopItem {
   enabled: boolean;
   updateStatus: ModUpdateStatus;
   loadOrder: number;
+  /**
+   * Steam's record of the installed content, from
+   * `appworkshop_<appid>.acf`. `null` throughout means Steam has no record of
+   * the item (not downloaded) or the manifest could not be read — the two are
+   * distinguished by `installStateKnown`.
+   */
+  downloaded: boolean;
+  /** ISO timestamp of the installed content version (Steam `timeupdated`). */
+  installedAt: string | null;
+  /** Steam content manifest id — the exact version on disk. */
+  manifest: string | null;
+  sizeBytes: number | null;
+  /** false when Steam's manifest was unreadable, so `downloaded` is a guess-free unknown. */
+  installStateKnown: boolean;
 }
+
+/** Per-item install facts supplied by the caller (from Steam's manifest). */
+export interface InstallInfo {
+  downloaded: boolean;
+  installedAt: string | null;
+  manifest: string | null;
+  sizeBytes: number | null;
+  installStateKnown: boolean;
+}
+
+export const UNKNOWN_INSTALL: InstallInfo = {
+  downloaded: false,
+  installedAt: null,
+  manifest: null,
+  sizeBytes: null,
+  installStateKnown: false,
+};
 
 const splitList = (v: string | undefined): string[] =>
   (v ?? '')
@@ -71,6 +102,7 @@ export function parseModsFromIni(iniText: string): ModsRaw {
 export function buildWorkshopItems(
   raw: ModsRaw,
   resolve: (workshopId: string) => ResolvedWorkshopItem,
+  installOf: (workshopId: string) => InstallInfo = () => UNKNOWN_INSTALL,
 ): WorkshopItem[] {
   const items: WorkshopItem[] = [];
   const attributed = new Set<string>();
@@ -92,6 +124,7 @@ export function buildWorkshopItems(
       enabled: enabledModIds.length > 0,
       updateStatus: 'unknown',
       loadOrder: items.length + 1,
+      ...installOf(workshopId),
     });
   }
 
@@ -109,6 +142,11 @@ export function buildWorkshopItems(
       modIdsResolved: true,
       enabled: true,
       updateStatus: 'unknown',
+      downloaded: true, // present locally in Mods= with no Workshop owner
+      installedAt: null,
+      manifest: null,
+      sizeBytes: null,
+      installStateKnown: true,
       loadOrder: items.length + 1,
     });
   }

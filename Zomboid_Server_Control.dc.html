@@ -473,8 +473,8 @@ input,select,textarea{font-family:inherit}
 </div>
 <section style="border:1px solid #26231e;background:#161410;border-radius:7px;overflow:hidden">
 <div style="overflow-x:auto"><div style="min-width:860px">
-<div style="display:grid;grid-template-columns:52px minmax(180px,1.4fr) 130px minmax(120px,1fr) 150px 70px 44px;gap:12px;padding:11px 18px;background:#191713;border-bottom:1px solid #26231e;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#6b655d">
-<span>ORDER</span><span>NAME</span><span>WORKSHOP ID</span><span>MOD IDS</span><span>STATUS</span><span>ENABLED</span><span></span>
+<div style="display:grid;grid-template-columns:52px minmax(160px,1.3fr) 120px minmax(110px,1fr) 118px 132px 132px 70px 44px;gap:12px;padding:11px 18px;background:#191713;border-bottom:1px solid #26231e;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#6b655d">
+<span>ORDER</span><span>NAME</span><span>WORKSHOP ID</span><span>MOD IDS</span><span>DOWNLOADED</span><span>INSTALLED VERSION</span><span>UPDATE</span><span>ENABLED</span><span></span>
 </div>
 <sc-if value="{{ modsEmpty }}">
 <div style="padding:32px 18px;text-align:center;display:flex;flex-direction:column;gap:6px">
@@ -483,7 +483,7 @@ input,select,textarea{font-family:inherit}
 </div>
 </sc-if>
 <sc-for list="{{ modRows }}" as="m" hint-placeholder-count="7">
-<div style="display:grid;grid-template-columns:52px minmax(180px,1.4fr) 130px minmax(120px,1fr) 150px 70px 44px;gap:12px;align-items:center;padding:11px 18px;border-bottom:1px solid #201d18">
+<div style="display:grid;grid-template-columns:52px minmax(160px,1.3fr) 120px minmax(110px,1fr) 118px 132px 132px 70px 44px;gap:12px;align-items:center;padding:11px 18px;border-bottom:1px solid #201d18">
 <div style="display:flex;align-items:center;gap:4px">
 <span style="font:500 11.5px 'IBM Plex Mono',monospace;color:#918a80">{{ m.loadOrder }}</span>
 <div style="display:flex;flex-direction:column;gap:1px">
@@ -497,6 +497,11 @@ input,select,textarea{font-family:inherit}
 </div>
 <span style="font:400 12px 'IBM Plex Mono',monospace;color:#918a80">{{ m.workshopIdText }}</span>
 <span style="font:400 12px 'IBM Plex Mono',monospace;color:#6b655d;overflow:hidden;text-overflow:ellipsis">{{ m.modIdsText }}</span>
+<span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:{{ m.downloadedColor }}">{{ m.downloadedText }}</span>
+<div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+<span style="font:400 11.5px 'IBM Plex Sans',sans-serif;color:#a9a29a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Steam content manifest {{ m.versionText }} · {{ m.sizeText }}">{{ m.installedText }}</span>
+<span style="font:400 10px 'IBM Plex Mono',monospace;color:#57524b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.versionText }} · {{ m.sizeText }}</span>
+</div>
 <span style="display:flex;align-items:center;gap:7px;font:400 12px 'IBM Plex Sans',sans-serif;color:{{ m.statusColor }}"><span style="font:600 11px 'IBM Plex Mono',monospace">{{ m.statusIcon }}</span>{{ m.statusText }}</span>
 <sc-if value="{{ can.moderate }}"><button type="button" onClick="{{ m.toggle }}" aria-pressed="{{ m.enabled }}" style="justify-self:start;padding:4px 9px;border:1px solid {{ m.enabledBorder }};border-radius:4px;background:{{ m.enabledBg }};color:{{ m.enabledColor }};font:500 11px 'IBM Plex Mono',monospace;cursor:pointer">{{ m.enabledLabel }}</button></sc-if>
 <sc-if value="{{ can.moderate }}"><button type="button" onClick="{{ m.remove }}" aria-label="Remove mod" style="width:28px;height:26px;border:1px solid #2b2822;border-radius:4px;background:#1b1813;color:#918a80;cursor:pointer;font:600 12px 'IBM Plex Sans',sans-serif" style-hover="background:#26160f;color:#d1836e">✕</button></sc-if>
@@ -705,7 +710,7 @@ input,select,textarea{font-family:inherit}
 <sc-if value="{{ dlg.showTarget }}">
 <div style="display:flex;flex-direction:column;gap:4px;padding:11px 13px;border:1px solid #2b2822;border-radius:5px;background:#12110e">
 <span style="font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#6b655d">{{ dlg.targetLabel }}</span>
-<span style="font:500 14px 'IBM Plex Sans',sans-serif;color:#e9e5dd">{{ dlg.target }}</span>
+<span style="font:500 14px 'IBM Plex Sans',sans-serif;color:#e9e5dd;white-space:pre-wrap;max-height:40vh;overflow:auto">{{ dlg.target }}</span>
 </div>
 </sc-if>
 <sc-if value="{{ dlg.showText }}">
@@ -1321,7 +1326,62 @@ class Component extends DCLogic {
       },
     });
   }
-  checkMods = async () => { this.toast("info", "Checking Workshop for updates…"); const r = await this.state.api.modsApi.checkUpdates(); this.toast(r.outdated ? "warn" : "ok", r.outdated ? r.outdated + " mod(s) need updating" : "All mods up to date", r.checked + " item(s) checked"); };
+  /**
+   * Check Workshop items for updates and SHOW THE RESULT PER MOD.
+   *
+   * Project Zomboid's own checkModsNeedUpdate only answers yes/no for the whole
+   * collection, so a bare "N mods need updating" was all the panel could say.
+   * The backend now correlates that verdict with the per-item Steam state PZ
+   * logs and with Steam's install manifest, so each row can name the mod, say
+   * whether it is downloaded, and show the installed version. Items PZ did not
+   * name keep an honest "not reported" rather than being guessed.
+   */
+  checkMods = async () => {
+    this.toast("info", "Checking Workshop for updates…", "Watching the server log for the result.");
+    let r;
+    try { r = await this.state.api.modsApi.checkUpdates(); }
+    catch (e) { this.toast("err", "Update check failed", (e && e.message) || ""); return; }
+    // Refresh the table so install/version columns reflect what the check saw.
+    try { this.setState({ mods: await this.state.api.modsApi.list() }); } catch (_) { /* keep current list */ }
+
+    const items = r.items || [];
+    const needing = items.filter((i) => i.needsUpdate === true);
+    const unreported = items.filter((i) => i.needsUpdate === null);
+    const d = (t) => (t ? new Date(t).toLocaleDateString() : "unknown");
+    const fmt = (i) => {
+      const who = (i.publishedTitle || i.name || (i.modIds || [])[0] || i.workshopId) + " · " + i.workshopId;
+      const dl = i.downloaded ? "downloaded" : "NOT downloaded";
+      const ver = i.latestAt
+        ? "installed " + d(i.installedAt) + " → workshop " + d(i.latestAt)
+        : "installed " + d(i.installedAt);
+      return who + "\n    " + dl + " · " + ver;
+    };
+    const upToDate = items.filter((i) => i.needsUpdate === false);
+    const lines = [];
+    if (needing.length) lines.push("NEEDS UPDATE (" + needing.length + ")", ...needing.map(fmt), "");
+    if (upToDate.length) lines.push("UP TO DATE (" + upToDate.length + ")", ...upToDate.map(fmt), "");
+    if (unreported.length) {
+      lines.push("COULD NOT DETERMINE (" + unreported.length + ")");
+      lines.push("Neither the Workshop nor the game server reported a version for these.");
+      lines.push(...unreported.map(fmt));
+    }
+
+    this.openDialog({
+      type: "modupdates",
+      kicker: "STEAM WORKSHOP", kickerColor: C.amber, border: "#34302a",
+      title: needing.length ? needing.length + " mod(s) need updating" : "Mod update check",
+      body: r.message,
+      warning: r.verdict === "updates_available" && !needing.length
+        ? (r.comparedWithWorkshop
+            ? "The server reports updates are available, but every item that could be compared already matches the Workshop. It may be referring to the base game or an item Steam could not report on."
+            : "The server reports updates are available but does not identify which mod, and Steam could not be reached to compare versions.")
+        : "",
+      showTarget: lines.length > 0, targetLabel: "RESULT", target: lines.join("\n"),
+      confirmLabel: "Close", confirmBg: "#1c1a16", confirmBorder: "#34302a", confirmColor: "#cfc9c0",
+      onConfirm: () => this.closeDialog(),
+    });
+    this.logActivity("checked Workshop mods for updates", r.checked + " item(s) checked");
+  };
   updateMods = async () => { const out = this.state.mods.filter((m) => m.updateStatus === "update_available").length; if (!out) { this.toast("info", "Nothing to update"); return; } this.toast("info", "Updating " + out + " mod(s)…"); this.setState({ mods: await this.state.api.modsApi.updateAll() }); this.toast("ok", "Mods updated", "Restart the server to load new versions"); this.logActivity("updated " + out + " Workshop mod(s)"); };
 
   /* ----------------------------------------------- PANEL users & access */
@@ -1658,8 +1718,19 @@ class Component extends DCLogic {
       const st = { updated: { icon: "✓", text: "Updated", color: C.green }, update_available: { icon: "⚠", text: "Update available", color: C.warn }, unknown: { icon: "?", text: "Unknown", color: "#7a736a" } }[m.updateStatus];
       const isWs = m.workshopId != null;
       const noop = () => {};
+      // Install facts come from Steam's own manifest. "Unknown" is shown when
+      // that manifest could not be read — never guessed as "not downloaded".
+      const dl = !isWs ? { text: "Local", color: "#a9a29a" }
+        : m.installStateKnown === false ? { text: "Unknown", color: "#7a736a" }
+        : m.downloaded ? { text: "Downloaded", color: C.green }
+        : { text: "Not downloaded", color: C.warn };
+      const installedText = m.installedAt ? new Date(m.installedAt).toLocaleString() : "—";
+      const versionText = m.manifest ? String(m.manifest).slice(0, 12) : "—";
+      const sizeText = m.sizeBytes ? (m.sizeBytes / 1048576).toFixed(1) + " MB" : "—";
       return {
         ...m, displayName, modIdsText, workshopIdText,
+        downloadedText: dl.text, downloadedColor: dl.color,
+        installedText, versionText, sizeText,
         statusIcon: st.icon, statusText: st.text, statusColor: st.color,
         nameColor: m.enabled ? C.text : "#7a736a",
         enabledLabel: m.enabled ? "ON" : "OFF",

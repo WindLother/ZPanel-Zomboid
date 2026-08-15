@@ -19,6 +19,9 @@ const installDir =
   env.PZ_INSTALL_DIR ||
   (env.PZ_WORKSHOP_DIR ? path.resolve(env.PZ_WORKSHOP_DIR, '..', '..', '..', '..') : installBase);
 
+const workshopContentDir =
+  env.PZ_WORKSHOP_DIR || path.join(installBase, 'steamapps', 'workshop', 'content', '108600');
+
 export const paths = {
   serverName: name,
   serverDir,
@@ -43,7 +46,17 @@ export const paths = {
    * files) may live for this server. Discovery scans these to resolve a Workshop
    * ID's real Mod IDs. Runtime-agnostic (pure filesystem) — no AMP dependency.
    */
-  workshopContentDir: env.PZ_WORKSHOP_DIR || path.join(installBase, 'steamapps', 'workshop', 'content', '108600'),
+  workshopContentDir: workshopContentDir,
+  /**
+   * Steam's own manifest of installed Workshop items
+   * (`steamapps/workshop/appworkshop_<appid>.acf`). READ-ONLY: it is the
+   * authoritative record of which items are downloaded and which content
+   * version (manifest id + timeupdated) is on disk.
+   */
+  workshopManifest: path.join(
+    path.resolve(workshopContentDir, '..', '..'),
+    `appworkshop_${path.basename(workshopContentDir)}.acf`,
+  ),
   zomboidWorkshopDir: path.join(zomboidDir, 'Workshop'),
   localModsDir: path.join(zomboidDir, 'mods'),
 

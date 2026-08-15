@@ -45,7 +45,10 @@ panel never fabricates game state.
   preserved untouched.
 - **Mods / Steam Workshop** — manage `WorkshopItems=` and `Mods=` with a correct
   one-to-many Workshop-ID → Mod-ID model, mod.info discovery from downloaded
-  Workshop content, load-order moves, enable/disable, and update checks.
+  Workshop content, load-order moves, enable/disable, and **update checks that
+  name the mod**: every item shows whether Steam actually has it downloaded,
+  the installed content version, and — when the Workshop is reachable — the
+  published version it is compared against.
 - **Logs** — live tail of the PZ `DebugLog-server` files streamed to the browser
   over Server-Sent Events, with level parsing.
 - **Console** — RCON game console for admins, restricted to an explicit
@@ -210,6 +213,7 @@ template. **Never commit a real `.env`.**
 | `PZ_RCON_HOST` | no (default `127.0.0.1`) | RCON host — keep local | `127.0.0.1` |
 | `PZ_RCON_PORT` | no (default `27015`) | RCON TCP port (`RCONPort` in the ini) | `27115` |
 | `PZ_RCON_PASSWORD` | yes in practice | RCON password (`RCONPassword` in the ini) | `<strong-secret>` |
+| `STEAM_WORKSHOP_API` | no (default `true`) | Let "Check for updates" compare installed vs published Workshop versions via Steam's public API. `false` = fully offline | `true` |
 | `PANEL_DB_PATH` | no (default `./data/panel.db`) | Panel SQLite location | `/var/lib/zpanel/panel.db` |
 | `METRICS_SAMPLE_MS` | no (default `5000`) | Metrics sampling interval | `5000` |
 | `METRICS_HISTORY_POINTS` | no (default `120`) | In-memory history buffer size | `120` |
@@ -404,6 +408,26 @@ ZPanel's add-mod workflow:
    association you asserted so it can group/display/remove correctly later.
 4. The backend validates every ID and writes both lists with backup + atomic
    write, preserving unrelated ini content.
+
+### Checking for mod updates
+
+Project Zomboid's own `checkModsNeedUpdate` answers **yes/no for the whole
+collection** — it never names an item — so on its own it can only produce a
+useless "some mods need updating". ZPanel therefore combines three real
+sources:
+
+1. Steam's install manifest (`appworkshop_<appid>.acf`) — is the item actually
+   **downloaded**, and which **content version** is on disk.
+2. Steam's public Workshop API — the **published** version, so installed-vs-
+   published tells you exactly which mods are stale (disable with
+   `STEAM_WORKSHOP_API=false`).
+3. The game server's own log lines (`Workshop: … GetItemState()=…|NeedsUpdate|…
+   ID=<id>`) as a fallback when Steam cannot be reached.
+
+The result names each mod with both dates, e.g. *"1 of 22 Workshop item(s) need
+updating: CleanUI [B42]"* — installed 2026-08-14 → workshop 2026-08-15. An item
+that no source could rule on is reported as **could not determine**, never
+guessed.
 
 Mod IDs are validated (letters, digits, `_`, `.`, `-` only) and Workshop IDs
 must be 6–12 digit numbers — semicolons, newlines, paths, and shell metacharacters

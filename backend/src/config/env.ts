@@ -79,6 +79,12 @@ const EnvSchema = z.object({
   AMP_SYSTEM_USER: z.string().default('amp'),
   AMP_ALLOW_CLI: bool(true),
 
+  // Optional outbound lookup of Workshop item versions (public, key-less Steam
+  // endpoint). Used only by the explicit "check for updates" action, to say
+  // WHICH mods are out of date. Set false for a fully offline panel; the check
+  // then falls back to what the game server itself reports.
+  STEAM_WORKSHOP_API: bool(true),
+
   PANEL_DB_PATH: z.string().default('./data/panel.db'),
   METRICS_SAMPLE_MS: z.coerce.number().int().positive().default(5000),
   METRICS_HISTORY_POINTS: z.coerce.number().int().positive().default(120),
